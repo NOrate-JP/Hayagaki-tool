@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>早書き回答ツール</title>
+<style>
+:root{--bg:#e9eef3;--ink:#13233a;--mut:#6a7a8f;--line:#c9d3de;--pan:#fff;--red:#e5484d;--redbg:#ffd8d9;--blue:#2f6fed;--bluebg:#d6e4ff}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 "BIZ UDPGothic","Hiragino Sans","Yu Gothic",sans-serif}
+#app{height:100dvh;display:flex;flex-direction:column}
+button,input{font:inherit;color:inherit}
+button{border:1px solid var(--line);background:var(--pan);border-radius:8px;padding:.55em 1em;cursor:pointer;min-height:44px}
+button:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+button.pri{background:var(--ink);color:#fff;border-color:var(--ink)}button:disabled{opacity:.4;cursor:default}
+input[type=text]{width:100%;border:1px solid var(--line);border-radius:8px;padding:.6em .8em;background:#fff;min-height:44px}
+.home{margin:auto;width:min(420px,92vw);display:flex;flex-direction:column;gap:14px}
+.home h1{font-size:1.8rem;margin:0 0 4px;letter-spacing:.04em}
+.panel{background:var(--pan);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px}.panel h2{margin:0;font-size:1rem}
+.err{color:var(--red);min-height:1.5em;margin:0}
+header.top{display:flex;gap:12px;align-items:center;padding:10px 14px;background:var(--ink);color:#fff;padding-top:max(10px,env(safe-area-inset-top))}
+header.top .code{font-weight:700;letter-spacing:.15em;font-size:1.2rem}header.top .sp{flex:1}
+header.top button{min-height:36px;padding:.2em .8em;background:transparent;color:#fff;border-color:#5b6f8a}
+.pmain{flex:1;min-height:0;display:flex;flex-direction:column}
+.left{flex:1;min-height:0;display:flex;flex-direction:column}
+.side{order:-1;display:flex;gap:6px;overflow-x:auto;padding:8px 12px;white-space:nowrap;background:#dde5ed}
+.chip{background:#fff;border-radius:99px;padding:2px 12px;font-size:.9rem}
+.info{flex:1;overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.info h3{margin:6px 0 0;font-size:.95rem;color:var(--mut)}.mut{color:var(--mut);margin:0}
+.rv{background:#fff;border-left:5px solid var(--ink);border-radius:6px;padding:8px 12px}.rv b{display:block;font-size:.85rem;color:var(--mut)}
+.mine{border-radius:8px;padding:8px 12px;background:#fff;border:2px solid var(--line)}
+.mine.ok{background:var(--redbg);border-color:var(--red)}.mine.ng{background:var(--bluebg);border-color:var(--blue)}
+.mine small{display:block;font-weight:700}
+.ans{padding:10px 12px max(12px,env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line)}
+.ans .row{display:flex;gap:8px;margin-top:8px;align-items:center}.ans .row span{flex:1;color:var(--mut);font-size:.9rem}
+@media(min-width:900px){.pmain{flex-direction:row}.side{order:0;flex-direction:column;width:240px;overflow-y:auto;white-space:normal;padding:14px}.chip{border-radius:8px;padding:6px 12px}}
+.grid{flex:1;overflow:auto;padding:12px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px;align-content:start}
+@media(min-width:640px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:1000px){.grid{grid-template-columns:repeat(5,1fr)}}
+.empty{grid-column:1/-1;text-align:center;color:var(--mut);margin-top:12vh}
+.card{background:#fff;border:3px solid var(--line);border-radius:10px;display:flex;flex-direction:column;min-height:150px;overflow:hidden}
+.card.ok{background:var(--redbg);border-color:var(--red)}.card.ng{background:var(--bluebg);border-color:var(--blue)}
+.card .h{display:flex;gap:6px;align-items:center;padding:6px 10px;font-size:.85rem;background:rgba(19,35,58,.06)}
+.card .h b{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .h label{display:flex;align-items:center;min-width:32px;min-height:32px;justify-content:center}
+.card .t{flex:1;padding:8px 10px;font-size:1.15rem;font-weight:700;word-break:break-all}
+.card .b{display:flex;gap:6px;padding:6px 8px}.card .b button{flex:1;font-size:1.3rem;font-weight:700}
+.card.ok .b .o{background:var(--red);color:#fff;border-color:var(--red)}.card.ng .b .x{background:var(--blue);color:#fff;border-color:var(--blue)}
+.pend{font-size:.75rem;color:var(--mut)}
+footer.bar{display:flex;gap:8px;padding:10px 12px max(10px,env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line)}
+footer.bar button{flex:1}
+dialog{border:0;border-radius:12px;padding:18px;width:min(440px,92vw)}dialog::backdrop{background:rgba(19,35,58,.5)}
+dialog .f{display:flex;gap:10px;align-items:center;margin:12px 0}dialog h2{margin:0 0 6px;font-size:1.1rem}
+dialog input[type=number]{width:5em;padding:.4em;border:1px solid var(--line);border-radius:6px}
+dialog input[type=checkbox]{width:22px;height:22px}
+.tools{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}.tools button{min-height:40px;padding:.2em .7em;font-size:.9rem}.tools button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+#cv{display:block;margin:0 auto;max-width:100%;max-height:32dvh;background:#fff;border:1px solid var(--line);border-radius:6px;touch-action:none;cursor:crosshair}
+.info img{display:block;max-width:min(100%,320px);border:1px solid var(--line);background:#fff;border-radius:6px;margin:4px 0}
+.card .t img{display:block;width:100%;background:#fff;border-radius:4px;cursor:zoom-in}
+select{font:inherit;padding:.4em;border:1px solid var(--line);border-radius:6px;background:#fff}
+</style></head><body><div id="app"></div>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,signInAnonymously} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getDatabase,ref,set,get,update,push,remove,onValue} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+// ▼ Firebaseの設定をここに貼り付け
+const firebaseConfig={apiKey:"YOUR_API_KEY",authDomain:"YOUR_PROJECT.firebaseapp.com",databaseURL:"https://YOUR_PROJECT-default-rtdb.firebaseio.com",projectId:"YOUR_PROJECT",appId:"YOUR_APP_ID"};
+
+const E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $=s=>document.querySelector(s),app=$('#app');
+const S={sel:new Set(),answers:null,results:null,revealed:null,players:null,meta:null,mine:null};
+let db,uid,off=0;
+const now=()=>Date.now()+off;
+const R=p=>ref(db,`rooms/${S.room}${p?'/'+p:''}`);
+const CH='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const gen=()=>Array.from({length:5},()=>CH[Math.random()*CH.length|0]).join('');
+const joinUrl=()=>location.origin+location.pathname+'?room='+S.room;
+const cfg=()=>S.meta?.settings||{limitOn:false,limit:1,instant:true,mode:'text'};
+
+async function init(){
+  try{
+    const a=initializeApp(firebaseConfig);db=getDatabase(a);
+    const au=getAuth(a);await signInAnonymously(au);uid=au.currentUser.uid;
+    onValue(ref(db,'.info/serverTimeOffset'),s=>off=s.val()||0);
+    home();
+  }catch(e){app.innerHTML=`<div class="home"><h1>接続できません</h1><p class="err">Firebaseの設定と匿名ログインの有効化を確認してください。<br>${E(e.message)}</p></div>`}
+}
+const err=m=>{$('#err').textContent=m};
+
+function home(){
+  const p=new URLSearchParams(location.search).get('room')||'',hr=localStorage.hostRoom;
+  app.innerHTML=`<div class="home"><h1>早書き回答ツール</h1>
+  <div class="panel"><h2>参加する</h2><input type="text" id="jc" placeholder="参加コード" value="${E(p)}" maxlength="8" autocapitalize="characters">
+  <input type="text" id="jn" placeholder="名前" value="${E(localStorage.name||'')}" maxlength="12"><button class="pri" id="jb">参加する</button></div>
+  <div class="panel"><h2>司会者</h2><button class="pri" id="cb">部屋を作る</button>${hr?`<button id="rb">部屋 ${E(hr)} に戻る</button>`:''}</div><p id="err" class="err"></p></div>`;
+  $('#jb').onclick=join;$('#cb').onclick=create;
+  if(hr)$('#rb').onclick=async()=>{S.room=hr;try{const m=await get(R('meta'));if(m.exists()&&m.val().host===uid)host();else err('この部屋は使えません')}catch(e){err('戻れませんでした')}};
+}
+async function create(){
+  for(let i=0;i<5;i++){
+    const c=gen();
+    try{await set(ref(db,`rooms/${c}/meta`),{host:uid,created:now(),settings:{limitOn:false,limit:1,instant:true,mode:'text'}});S.room=c;localStorage.hostRoom=c;return host()}catch(e){}
+  }
+  err('部屋を作れませんでした。データベースのルール設定を確認してください。');
+}
+async function join(){
+  const c=$('#jc').value.trim().toUpperCase(),n=$('#jn').value.trim();
+  if(!c||!n)return err('参加コードと名前を入力してください');
+  S.room=c;
+  try{
+    const m=await get(R('meta'));if(!m.exists())return err('この参加コードの部屋は見つかりません');
+    localStorage.name=n;S.name=n;await set(R('players/'+uid),{name:n,t:now()});party();
+  }catch(e){err('参加できませんでした')}
+}
+
+/* ---------- 参加者 ---------- */
+function party(){
+  app.innerHTML=`<header class="top"><span class="code">${E(S.room)}</span><span class="sp"></span><span>${E(S.name)}</span></header>
+  <div class="pmain"><div class="left"><section class="info" id="info"></section>
+  <form class="ans" id="af"><div id="dz" hidden><canvas id="cv" width="640" height="384"></canvas><div class="tools"><button type="button" data-t="p0">ペン細</button><button type="button" data-t="p1">ペン中</button><button type="button" data-t="p2">ペン太</button><button type="button" data-t="e0">消し細</button><button type="button" data-t="e1">消し中</button><button type="button" data-t="e2">消し太</button><button type="button" id="ud" data-d="u">戻す</button><button type="button" id="rd" data-d="r">進める</button><button type="button" data-d="c">全消し</button></div></div><input type="text" id="ai" placeholder="回答を入力" autocomplete="off" maxlength="200">
+  <div class="row"><span id="lf"></span><button class="pri" id="ab">送信</button></div></form></div><aside class="side" id="pl"></aside></div>`;
+  $('#af').onsubmit=async e=>{
+    e.preventDefault();if(full())return;
+    const m=cfg().mode||'text',v=m==='draw'?'':$('#ai').value.trim(),ink=m!=='text'&&hasInk();
+    if(!v&&!ink)return;
+    const o={name:S.name,t:now()};if(v)o.text=v;if(ink)o.img=$('#cv').toDataURL('image/png');
+    $('#ai').value='';if(ink){D.s=[];D.r=[];draw()}
+    await push(R('answers/'+uid),o);
+  };
+  initDraw();
+  onValue(R('meta'),s=>{S.meta=s.val();pinfo()});
+  onValue(R('players'),s=>{S.players=s.val();$('#pl').innerHTML=Object.values(S.players||{}).map(p=>`<span class="chip">${E(p.name)}</span>`).join('')});
+  onValue(R('answers/'+uid),s=>{S.mine=s.val();pinfo()});
+  onValue(R('results/'+uid),s=>{S.results=s.val();pinfo()});
+  onValue(R('revealed'),s=>{S.revealed=s.val();pinfo()});
+}
+const myCount=()=>Object.keys(S.mine||{}).length;
+const full=()=>cfg().limitOn&&myCount()>=cfg().limit;
+function pinfo(){
+  const c=cfg();$('#lf').textContent=c.limitOn?`残り ${Math.max(0,c.limit-myCount())} 回`:'回数制限なし';
+  const md=c.mode||'text';$('#dz').hidden=md==='text';$('#ai').hidden=md==='draw';$('#dz').style.opacity=full()?.4:1;
+  $('#ab').disabled=full();$('#ai').disabled=full();
+  const rv=Object.values(S.revealed||{}).sort((a,b)=>a.t-b.t);
+  const my=Object.entries(S.mine||{}).map(([a,v])=>({a,...v})).sort((x,y)=>y.t-x.t);
+  $('#info').innerHTML=(rv.length?`<h3>公開された回答</h3>`+rv.map(r=>`<div class="rv"><b>${E(r.name)}</b>${r.img?`<img src="${r.img}">`:''}${E(r.text)}</div>`).join(''):'')
+   +`<h3>あなたの回答</h3>`+(my.length?my.map(v=>{const m=S.results?.[v.a];
+     return `<div class="mine ${m==='o'?'ok':m==='x'?'ng':''}"><small>${m==='o'?'○ 正解':m==='x'?'× 不正解':'送信済み'}</small>${v.img?`<img src="${v.img}">`:''}${E(v.text)}</div>`}).join(''):'<p class="mut">回答を入力して送信してください</p>');
+}
+
+/* ---------- 手書きボード ---------- */
+const D={s:[],r:[],t:'p',l:1,cur:null},SZ={p:[4,8,16],e:[14,28,52]};
+const hasInk=()=>{let i=D.s.length;while(i--){if(D.s[i].c)return false;if(!D.s[i].e)return true}return false};
+const tools=()=>document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===D.t+D.l));
+function draw(){
+  const cv=$('#cv'),x=cv.getContext('2d'),W=cv.width,H=cv.height;
+  x.fillStyle='#fff';x.fillRect(0,0,W,H);
+  D.s.forEach(s=>{
+    if(s.c){x.fillStyle='#fff';x.fillRect(0,0,W,H);return}
+    x.strokeStyle=s.e?'#fff':'#13233a';x.lineWidth=s.w;x.lineCap=x.lineJoin='round';x.beginPath();
+    s.p.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]));
+    if(s.p.length===1)x.lineTo(s.p[0][0]+.01,s.p[0][1]);x.stroke();
+  });
+  $('#ud').disabled=!D.s.length;$('#rd').disabled=!D.r.length;
+}
+function initDraw(){
+  const cv=$('#cv');D.s=[];D.r=[];D.t='p';D.l=1;D.cur=null;draw();tools();
+  const pt=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height]};
+  cv.onpointerdown=e=>{if(full())return;e.preventDefault();cv.setPointerCapture(e.pointerId);D.cur={e:D.t==='e',w:SZ[D.t][D.l],p:[pt(e)]};D.s.push(D.cur);D.r=[];draw()};
+  cv.onpointermove=e=>{if(!D.cur)return;D.cur.p.push(pt(e));draw()};
+  cv.onpointerup=cv.onpointercancel=()=>{D.cur=null};
+  $('#dz').onclick=e=>{
+    const b=e.target.closest('button');if(!b)return;
+    if(b.dataset.t){D.t=b.dataset.t[0];D.l=+b.dataset.t[1];tools()}
+    else if(b.dataset.d==='u'&&D.s.length)D.r.push(D.s.pop());
+    else if(b.dataset.d==='r'&&D.r.length)D.s.push(D.r.pop());
+    else if(b.dataset.d==='c'){D.s.push({c:1});D.r=[]}
+    draw();
+  };
+}
+
+/* ---------- 司会者 ---------- */
+function host(){
+  app.innerHTML=`<header class="top"><span class="code">${E(S.room)}</span><span id="pc"></span><span class="sp"></span><button id="cu">URLをコピー</button></header>
+  <main class="grid" id="cards"></main>
+  <footer class="bar"><button data-a="menu">メニュー</button><button data-a="notify" id="bn">通知</button><button data-a="reveal" id="br">公開</button><button data-a="reset">リセット</button></footer>
+  <dialog id="mn"><h2>設定</h2>
+  <div class="f"><input type="checkbox" id="s1"><label for="s1">回答回数を制限する</label><input type="number" id="s2" min="1" max="99"><span>回</span></div>
+  <div class="f"><input type="checkbox" id="s3"><label for="s3">正解・不正解をすぐ通知する</label></div>
+  <div class="f"><label for="s4">回答方式</label><select id="s4"><option value="text">文字</option><option value="draw">手書き</option><option value="both">文字＋手書き</option></select></div>
+  <div class="f"><span>参加コード <b>${E(S.room)}</b></span></div>
+  <div class="f"><button id="cu2">参加URLをコピー</button><button data-a="unreveal">公開を取り下げ</button></div>
+  <div class="f"><button class="pri" id="cl">閉じる</button></div></dialog>
+  <dialog id="zm"><img id="zi" style="width:100%;display:block"></dialog>`;
+  const cp=async()=>{try{await navigator.clipboard.writeText(joinUrl());alert('コピーしました')}catch(e){prompt('URL',joinUrl())}};
+  $('#cu').onclick=cp;$('#cu2').onclick=cp;$('#cl').onclick=()=>$('#mn').close();$('#zm').onclick=()=>$('#zm').close();
+  const sv=async()=>{await update(R('meta/settings'),{limitOn:$('#s1').checked,limit:Math.max(1,+$('#s2').value||1),instant:$('#s3').checked,mode:$('#s4').value});if($('#s3').checked)notify()};
+  ['s1','s2','s3','s4'].forEach(i=>$('#'+i).onchange=sv);
+  app.onclick=hclick;
+  $('#cards').onchange=e=>{const k=e.target.dataset.sel;if(!k)return;e.target.checked?S.sel.add(k):S.sel.delete(k);bar()};
+  onValue(R('meta'),s=>{S.meta=s.val();const c=cfg();$('#s1').checked=c.limitOn;$('#s2').value=c.limit;$('#s3').checked=c.instant;$('#s4').value=c.mode||'text'});
+  onValue(R('players'),s=>{S.players=s.val();$('#pc').textContent=`参加 ${Object.keys(S.players||{}).length}人`});
+  onValue(R('answers'),s=>{S.answers=s.val();cards()});
+  onValue(R('results'),s=>{S.results=s.val();cards()});
+}
+const list=()=>Object.entries(S.answers||{}).flatMap(([u,o])=>Object.entries(o).map(([a,v])=>({u,a,k:u+'/'+a,...v}))).sort((x,y)=>x.t-y.t);
+const pub=c=>S.results?.[c.u]?.[c.a]||null;
+const pend=()=>list().filter(c=>(c.mark||null)!==pub(c));
+function cards(){
+  const L=list(),t0=L[0]?.t;
+  $('#cards').innerHTML=L.length?L.map((c,i)=>`<div class="card ${c.mark==='o'?'ok':c.mark==='x'?'ng':''}">
+    <div class="h"><span>#${i+1}</span><b>${E(c.name)}</b>${i?`<span>+${((c.t-t0)/1000).toFixed(2)}s</span>`:''}<label><input type="checkbox" data-sel="${c.k}" ${S.sel.has(c.k)?'checked':''}></label></div>
+    <div class="t">${c.img?`<img data-z="1" src="${c.img}" alt="手書き回答">`:''}${E(c.text||'')}</div>
+    ${(c.mark||null)!==pub(c)?'<div class="pend">　未通知</div>':''}
+    <div class="b"><button class="o" data-m="o" data-k="${c.k}" aria-label="正解">○</button><button class="x" data-m="x" data-k="${c.k}" aria-label="不正解">×</button></div></div>`).join('')
+    :'<p class="empty">回答が届くとここに並びます</p>';
+  bar();
+}
+function bar(){
+  const keys=new Set(list().map(c=>c.k));[...S.sel].forEach(k=>keys.has(k)||S.sel.delete(k));
+  const n=pend().length;$('#bn').textContent=n?`通知 (${n})`:'通知';$('#bn').disabled=!n;
+  $('#br').textContent=S.sel.size?`公開 (${S.sel.size})`:'公開';$('#br').disabled=!S.sel.size;
+}
+async function mark(k,m){
+  const [u,a]=k.split('/'),c=S.answers[u][a],n=c.mark===m?null:m,up={[`answers/${u}/${a}/mark`]:n};
+  if(cfg().instant)up[`results/${u}/${a}`]=n;
+  await update(R(''),up);
+}
+async function notify(){
+  const up={};pend().forEach(c=>{up[`results/${c.u}/${c.a}`]=c.mark||null});
+  if(Object.keys(up).length)await update(R(''),up);
+}
+async function hclick(e){
+  if(e.target.dataset.z){$('#zi').src=e.target.src;$('#zm').showModal();return}
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.m)return mark(b.dataset.k,b.dataset.m);
+  const a=b.dataset.a;
+  if(a==='menu')$('#mn').showModal();
+  else if(a==='notify')notify();
+  else if(a==='reveal'){
+    const o={};list().filter(c=>S.sel.has(c.k)).forEach(c=>{o[c.a]={name:c.name,text:c.text||'',img:c.img||null,t:c.t}});
+    await set(R('revealed'),o);S.sel.clear();cards();
+  }
+  else if(a==='unreveal'){await remove(R('revealed'));$('#mn').close()}
+  else if(a==='reset'&&confirm('届いた回答・通知・公開をすべて削除し、回答回数もリセットします。よろしいですか？')){
+    S.sel.clear();await update(R(''),{answers:null,results:null,revealed:null});
+  }
+}
+init();
+</script></body></html>
