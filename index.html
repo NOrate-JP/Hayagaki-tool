@@ -82,6 +82,19 @@ footer.bar button{padding:.5em .2em;font-size:.9rem}
 #ab2{display:block}
 .ans:not(.low) #dz:not([hidden])~.row #ab{display:none}
 }
+.tbar{text-align:center;font-size:clamp(2.2rem,9vw,3.6rem);font-weight:700;line-height:1.15;padding:2px 8px;background:#fff;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+.rvw{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.rvw .hc{width:clamp(140px,calc((100% - (var(--n) - 1)*10px)/var(--n)),360px)}
+.info h3{text-align:left}
+.card .h{cursor:pointer;user-select:none}.card.sel{box-shadow:0 0 0 4px var(--ink)}.card.sel .h{background:var(--ink);color:#fff}
+.card .b{flex-wrap:wrap}.card .b button{flex:1 1 34px}
+.card .b .mini{flex:0 0 auto;font-size:.75rem;font-weight:400;min-height:36px;padding:0 .6em}
+.card .b .mini.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+footer.bar{flex-wrap:wrap}footer.bar button{flex:1 1 auto}
+dialog{max-height:90dvh;overflow:auto}
+.tl button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:46px;padding:.2em .4em}
+.sz{display:block;width:20px;border-radius:99px;background:currentColor}
+@media(min-width:900px){.tl{display:grid;grid-auto-flow:column;grid-template-rows:repeat(3,auto)}}
 </style></head><body><div id="app"></div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -109,7 +122,6 @@ const firebaseConfig = {
 
 };
 
-
 const E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const $=s=>document.querySelector(s),app=$('#app');
 const S={sel:new Set(),answers:null,results:null,revealed:null,players:null,meta:null,mine:null};
@@ -119,7 +131,7 @@ const R=p=>ref(db,`rooms/${S.room}${p?'/'+p:''}`);
 const CH='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const gen=()=>Array.from({length:5},()=>CH[Math.random()*CH.length|0]).join('');
 const joinUrl=()=>location.origin+location.pathname+'?room='+S.room;
-const cfg=()=>S.meta?.settings||{limitOn:false,limit:1,instant:true,mode:'text'};
+const cfg=()=>S.meta?.settings||{limitOn:false,limit:1,instant:true,mode:'text',tmode:'up',tdur:60,tfmt:'ms'};
 
 async function init(){
   try{
@@ -143,7 +155,7 @@ function home(){
 async function create(){
   for(let i=0;i<5;i++){
     const c=gen();
-    try{await set(ref(db,`rooms/${c}/meta`),{host:uid,created:now(),settings:{limitOn:false,limit:1,instant:true,mode:'text'}});S.room=c;localStorage.hostRoom=c;return host()}catch(e){}
+    try{await set(ref(db,`rooms/${c}/meta`),{host:uid,created:now(),settings:{limitOn:false,limit:1,instant:true,mode:'text',tmode:'up',tdur:60,tfmt:'ms'}});S.room=c;localStorage.hostRoom=c;return host()}catch(e){}
   }
   err('部屋を作れませんでした。データベースのルール設定を確認してください。');
 }
@@ -159,9 +171,9 @@ async function join(){
 
 /* ---------- 参加者 ---------- */
 function party(){
-  app.innerHTML=`<header class="top"><span class="code">${E(S.room)}</span><span class="tm" id="tm"></span><span class="sp"></span><span>${E(S.name)}</span><button id="gs">設定</button></header>
+  app.innerHTML=`<header class="top"><span class="code">${E(S.room)}</span><span class="sp"></span><span>${E(S.name)}</span><button id="gs">設定</button></header><div class="tbar" id="tm" hidden></div>
   <div class="pmain"><div class="left"><section class="info" id="info"></section>
-  <form class="ans" id="af"><div id="dz" hidden><div class="tl"><button type="button" data-t="p0">ペン細</button><button type="button" data-t="p1">ペン中</button><button type="button" data-t="p2">ペン太</button><button type="button" data-t="e0">消し細</button><button type="button" data-t="e1">消し中</button><button type="button" data-t="e2">消し太</button></div><canvas id="cv" width="640" height="384"></canvas><div class="tr"><button type="button" id="ud" data-d="u">戻す</button><button type="button" id="rd" data-d="r">進める</button><button type="button" data-d="c">全消し</button><button class="pri" id="ab2">送信</button></div></div><input type="text" id="ai" placeholder="回答を入力" autocomplete="off" maxlength="200">
+  <form class="ans" id="af"><div id="dz" hidden><div class="tl">${tbs()}</div><canvas id="cv" width="640" height="384"></canvas><div class="tr"><button type="button" id="ud" data-d="u" aria-label="1つ戻す">↶ 戻す</button><button type="button" id="rd" data-d="r" aria-label="1つ進める">↷ 進める</button><button type="button" data-d="c">全消し</button><button class="pri" id="ab2">送信</button></div></div><input type="text" id="ai" placeholder="回答を入力" autocomplete="off" maxlength="200">
   <div class="row"><span id="lf"></span><button type="button" id="bd">ボードを下げる</button><button class="pri" id="ab">送信</button></div></form></div><aside class="side" id="pl"></aside></div>
   <dialog id="gd"><h2>この端末の設定</h2><div class="f"><label for="gc">1行に表示する枚数</label><select id="gc">${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join('')}</select></div><div class="f"><button class="pri" id="gx">閉じる</button></div></dialog>`;
   $('#af').onsubmit=async e=>{
@@ -176,7 +188,7 @@ function party(){
   $('#bd').onclick=()=>{const l=$('#af').classList.toggle('low');$('#bd').textContent=l?'ボードを出す':'ボードを下げる'};
   $('#gs').onclick=()=>$('#gd').showModal();$('#gx').onclick=()=>$('#gd').close();
   $('#gc').value=colsP();$('#gc').onchange=()=>{localStorage.colsP=$('#gc').value;pinfo()};
-  setInterval(()=>{const t=tmText();$('#tm').textContent=t?'参考 '+t:''},100);
+  setInterval(tick,100);
   onValue(R('meta'),s=>{S.meta=s.val();pinfo()});
   onValue(R('players'),s=>{S.players=s.val();$('#pl').innerHTML=Object.values(S.players||{}).map(p=>`<span class="chip">${E(p.name)}</span>`).join('')});
   onValue(R('answers/'+uid),s=>{S.mine=s.val();pinfo()});
@@ -192,15 +204,23 @@ function pinfo(){
   $('#ab').disabled=full();$('#ai').disabled=full();
   const rv=Object.values(S.revealed||{}).sort((a,b)=>a.t-b.t);
   const my=Object.entries(S.mine||{}).map(([a,v])=>({a,...v})).sort((x,y)=>y.t-x.t);
-  $('#info').innerHTML=(rv.length?`<h3>公開された回答</h3>`+rv.map(r=>`<div class="rv"><b>${E(r.name)}</b>${r.img?`<img src="${r.img}">`:''}${E(r.text)}</div>`).join(''):'')
+  $('#info').innerHTML=(rv.length?`<h3>公開された回答</h3><div class="rvw" style="--n:${rv.length}">`+rv.map(r=>`<div class="hc ${r.mark==='o'?'ok':r.mark==='x'?'ng':''}"><small>${E(r.name)}${r.mark==='o'?' ○':r.mark==='x'?' ×':''}</small><div class="t">${r.img?`<img src="${r.img}">`:''}${r.text?E(r.text):''}</div></div>`).join('')+'</div>':'')
    +`<h3>あなたの回答</h3>`+(my.length?`<div class="hg" style="grid-template-columns:repeat(${colsP()},1fr)">`+my.map(v=>{const m=S.results?.[v.a];
      return `<div class="hc ${m==='o'?'ok':m==='x'?'ng':''}"><small>${m==='o'?'○ 正解':m==='x'?'× 不正解':'送信済み'}</small><div class="t">${v.img?`<img src="${v.img}">`:''}${v.text?E(v.text):''}</div></div>`}).join('')+'</div>':'<p class="mut">回答を入力して送信してください</p>');
 }
 
 /* ---------- タイマー・表示設定 ---------- */
 const T=()=>S.meta?.timer;
-const fmt=ms=>{const d=Math.floor(ms/100),m=Math.floor(d/600);return String(m).padStart(2,'0')+':'+((d%600)/10).toFixed(1).padStart(4,'0')};
-const tmText=()=>{const t=T();return t?.start?fmt(Math.max(0,(t.stop||now())-t.start)):''};
+const fmt=(ms,dn)=>{
+  if((S.meta?.settings?.tfmt||'ms')==='s')return (Math.max(0,ms)/1000).toFixed(1);
+  const t=Math.max(0,dn?Math.ceil(ms/1000):Math.floor(ms/1000));
+  return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');
+};
+const tmText=()=>{const t=T();if(!t?.start)return'';const el=(t.stop||now())-t.start;return t.dur?fmt(t.dur-el,1):fmt(el,0)};
+const tick=()=>{const e=$('#tm');if(!e)return;const t=tmText();e.hidden=!t;e.textContent=t};
+const SV='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">';
+const IC={p:SV+'<path d="M4 20l1-4L16.5 4.5l3 3L8 19z"/><path d="M14 7l3 3"/></svg>',e:SV+'<path d="M14.5 4.5l5 5L10 19H5.5l-2-2z"/><path d="M8 11l5 5"/></svg>'};
+const tbs=()=>['p','e'].flatMap(k=>[0,1,2].map(l=>`<button type="button" data-t="${k}${l}" aria-label="${k==='p'?'ペン':'消しゴム'}${'細中太'[l]}" title="${k==='p'?'ペン':'消しゴム'}${'細中太'[l]}">${IC[k]}<i class="sz" style="height:${[2,4,7][l]}px"></i></button>`)).join('');
 const colsP=()=>+localStorage.colsP||(innerWidth>=900?4:2);
 const gridCols=()=>{$('#cards').style.gridTemplateColumns=+localStorage.colsH?`repeat(${localStorage.colsH},1fr)`:''};
 const tt=(c,i,t0)=>{const st=T()?.start;return st&&c.t>=st?((c.t-st)/1000).toFixed(3)+'s':(i?'+'+((c.t-t0)/1000).toFixed(3)+'s':'')};
@@ -238,71 +258,87 @@ function initDraw(){
 
 /* ---------- 司会者 ---------- */
 function host(){
-  app.innerHTML=`<header class="top"><span class="code">${E(S.room)}</span><span id="pc"></span><span class="tm" id="tm"></span><span class="sp"></span><button id="cu">URLをコピー</button></header>
+  app.innerHTML=`<header class="top"><span class="code">${E(S.room)}</span><span id="pc"></span><span class="sp"></span><button id="cu">URLをコピー</button></header><div class="tbar" id="tm" hidden></div>
   <main class="grid" id="cards"></main>
-  <footer class="bar"><button data-a="menu">メニュー</button><button data-a="notify" id="bn">通知</button><button data-a="reveal" id="br">公開</button><button data-a="timer" id="bt">タイマー開始</button><button data-a="reset">リセット</button></footer>
+  <footer class="bar"><button data-a="menu">メニュー</button><button data-a="notify" id="bn">通知</button><button data-a="reveal" id="br">公開</button><button data-a="unreveal" id="bu" hidden>取り下げ</button><button data-a="timer" id="bt">タイマー開始</button><button data-a="reset">リセット</button></footer>
   <dialog id="mn"><h2>設定</h2>
   <div class="f"><input type="checkbox" id="s1"><label for="s1">回答回数を制限する</label><input type="number" id="s2" min="1" max="99"><span>回</span></div>
   <div class="f"><input type="checkbox" id="s3"><label for="s3">正解・不正解をすぐ通知する</label></div>
   <div class="f"><label for="s4">回答方式</label><select id="s4"><option value="text">文字</option><option value="draw">手書き</option><option value="both">文字＋手書き</option></select></div>
+  <div class="f"><label for="s6">タイマー</label><select id="s6"><option value="up">カウントアップ</option><option value="down">カウントダウン</option></select><input type="number" id="s7" min="1" max="3600"><span>秒</span></div>
+  <div class="f"><label for="s8">タイマー表示</label><select id="s8"><option value="ms">mm:ss</option><option value="s">秒のみ</option></select></div>
   <div class="f"><label for="s5">1行の枚数(この端末)</label><select id="s5"><option value="0">自動</option>${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join('')}</select></div>
   <div class="f"><span>参加コード <b>${E(S.room)}</b></span></div>
-  <div class="f"><button id="cu2">参加URLをコピー</button><button data-a="unreveal">公開を取り下げ</button></div>
+  <div class="f"><button id="cu2">参加URLをコピー</button></div>
   <div class="f"><button class="pri" id="cl">閉じる</button></div></dialog>
   <dialog id="zm"><img id="zi" style="width:100%;display:block"></dialog>`;
   const cp=async()=>{try{await navigator.clipboard.writeText(joinUrl());alert('コピーしました')}catch(e){prompt('URL',joinUrl())}};
   $('#cu').onclick=cp;$('#cu2').onclick=cp;$('#cl').onclick=()=>$('#mn').close();$('#zm').onclick=()=>$('#zm').close();
   $('#s5').value=localStorage.colsH||0;$('#s5').onchange=()=>{localStorage.colsH=$('#s5').value;gridCols()};gridCols();
-  setInterval(()=>{$('#tm').textContent=tmText()},100);
-  const sv=async()=>{await update(R('meta/settings'),{limitOn:$('#s1').checked,limit:Math.max(1,+$('#s2').value||1),instant:$('#s3').checked,mode:$('#s4').value});if($('#s3').checked)notify()};
-  ['s1','s2','s3','s4'].forEach(i=>$('#'+i).onchange=sv);
+  setInterval(tick,100);
+  const sv=async()=>{await update(R('meta/settings'),{limitOn:$('#s1').checked,limit:Math.max(1,+$('#s2').value||1),instant:$('#s3').checked,mode:$('#s4').value,tmode:$('#s6').value,tdur:Math.max(1,+$('#s7').value||60),tfmt:$('#s8').value});if($('#s3').checked)notify()};
+  ['s1','s2','s3','s4','s6','s7','s8'].forEach(i=>$('#'+i).onchange=sv);
   app.onclick=hclick;
   $('#cards').onchange=e=>{const k=e.target.dataset.sel;if(!k)return;e.target.checked?S.sel.add(k):S.sel.delete(k);bar()};
-  onValue(R('meta'),s=>{S.meta=s.val();const c=cfg();$('#s1').checked=c.limitOn;$('#s2').value=c.limit;$('#s3').checked=c.instant;$('#s4').value=c.mode||'text';const t=T();$('#bt').textContent=(t?.start&&!t.stop)?'タイマー停止':'タイマー開始';cards()});
+  onValue(R('meta'),s=>{S.meta=s.val();const c=cfg();$('#s1').checked=c.limitOn;$('#s2').value=c.limit;$('#s3').checked=c.instant;$('#s4').value=c.mode||'text';$('#s6').value=c.tmode||'up';$('#s7').value=c.tdur||60;$('#s8').value=c.tfmt||'ms';const t=T();$('#bt').textContent=(t?.start&&!t.stop)?'タイマー停止':'タイマー開始';cards()});
   onValue(R('players'),s=>{S.players=s.val();$('#pc').textContent=`参加 ${Object.keys(S.players||{}).length}人`});
   onValue(R('answers'),s=>{S.answers=s.val();cards()});
   onValue(R('results'),s=>{S.results=s.val();cards()});
+  onValue(R('revealed'),s=>{S.revealed=s.val();cards()});
 }
 const list=()=>Object.entries(S.answers||{}).flatMap(([u,o])=>Object.entries(o).map(([a,v])=>({u,a,k:u+'/'+a,...v}))).sort((x,y)=>x.t-y.t);
 const pub=c=>S.results?.[c.u]?.[c.a]||null;
-const pend=()=>list().filter(c=>(c.mark||null)!==pub(c));
+const pend=()=>list().filter(c=>c.mark&&!nOn(c));
 function cards(){
   const L=list(),t0=L[0]?.t;
-  $('#cards').innerHTML=L.length?L.map((c,i)=>`<div class="card ${c.mark==='o'?'ok':c.mark==='x'?'ng':''}">
-    <div class="h"><span>#${i+1}</span><b>${E(c.name)}</b><span>${tt(c,i,t0)}</span><label><input type="checkbox" data-sel="${c.k}" ${S.sel.has(c.k)?'checked':''}></label></div>
+  $('#cards').innerHTML=L.length?L.map((c,i)=>{const rv=!!S.revealed?.[c.a],sl=S.sel.has(c.k),nt=nOn(c),pd=[rv&&'公開中',c.mark&&!nt&&'未通知'].filter(Boolean).join(' / ');
+    return `<div class="card ${c.mark==='o'?'ok':c.mark==='x'?'ng':''} ${sl?'sel':''}">
+    <div class="h" data-sel="${c.k}"><span>#${i+1}</span><b>${E(c.name)}</b><span>${tt(c,i,t0)}</span>${sl?'<span>✓</span>':''}</div>
     <div class="t">${c.img?`<img data-z="1" src="${c.img}" alt="手書き回答">`:''}${E(c.text||'')}</div>
-    ${(c.mark||null)!==pub(c)?'<div class="pend">　未通知</div>':''}
-    <div class="b"><button class="o" data-m="o" data-k="${c.k}" aria-label="正解">○</button><button class="x" data-m="x" data-k="${c.k}" aria-label="不正解">×</button></div></div>`).join('')
+    <div class="pend">${pd||'&nbsp;'}</div>
+    <div class="b"><button class="o" data-m="o" data-k="${c.k}" aria-label="正解">○</button><button class="x" data-m="x" data-k="${c.k}" aria-label="不正解">×</button><button class="mini ${rv?'on':''}" data-p="${c.k}">公開</button><button class="mini ${nt?'on':''}" data-n="${c.k}">通知</button></div></div>`}).join('')
     :'<p class="empty">回答が届くとここに並びます</p>';
   bar();
 }
 function bar(){
   const keys=new Set(list().map(c=>c.k));[...S.sel].forEach(k=>keys.has(k)||S.sel.delete(k));
   const n=pend().length;$('#bn').textContent=n?`通知 (${n})`:'通知';$('#bn').disabled=!n;
-  $('#br').textContent=S.sel.size?`公開 (${S.sel.size})`:'公開';$('#br').disabled=!S.sel.size;
+  $('#br').textContent=S.sel.size?`公開 (${S.sel.size})`:'公開';$('#br').disabled=!S.sel.size;$('#bu').hidden=!Object.keys(S.revealed||{}).length;
 }
-async function mark(k,m){
-  const [u,a]=k.split('/'),c=S.answers[u][a],n=c.mark===m?null:m,up={[`answers/${u}/${a}/mark`]:n};
-  if(cfg().instant)up[`results/${u}/${a}`]=n;
+const find=k=>list().find(c=>c.k===k);
+const nOn=c=>c.nt===undefined?cfg().instant:c.nt;
+async function setCard(c,o){
+  const mk=o.mark!==undefined?o.mark:(c.mark||null),nt=o.nt!==undefined?o.nt:nOn(c);
+  const up={[`answers/${c.u}/${c.a}/mark`]:mk,[`answers/${c.u}/${c.a}/nt`]:nt,[`results/${c.u}/${c.a}`]:nt?mk:null};
+  if(S.revealed?.[c.a])up[`revealed/${c.a}/mark`]=mk;
   await update(R(''),up);
 }
+const mark=(k,m)=>{const c=find(k);return setCard(c,{mark:c.mark===m?null:m})};
+async function togglePub(c){
+  if(S.revealed?.[c.a])await remove(R('revealed/'+c.a));
+  else await set(R('revealed/'+c.a),{name:c.name,text:c.text||'',img:c.img||null,t:c.t,mark:c.mark||null});
+}
 async function notify(){
-  const up={};pend().forEach(c=>{up[`results/${c.u}/${c.a}`]=c.mark||null});
+  const up={};pend().forEach(c=>{up[`answers/${c.u}/${c.a}/nt`]=true;up[`results/${c.u}/${c.a}`]=c.mark});
   if(Object.keys(up).length)await update(R(''),up);
 }
 async function hclick(e){
   if(e.target.dataset.z){$('#zi').src=e.target.src;$('#zm').showModal();return}
+  const hd=e.target.closest('.h[data-sel]');
+  if(hd){const k=hd.dataset.sel;S.sel.has(k)?S.sel.delete(k):S.sel.add(k);cards();return}
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.m)return mark(b.dataset.k,b.dataset.m);
+  if(b.dataset.p)return togglePub(find(b.dataset.p));
+  if(b.dataset.n){const c=find(b.dataset.n);return setCard(c,{nt:!nOn(c)})}
   const a=b.dataset.a;
   if(a==='menu')$('#mn').showModal();
   else if(a==='notify')notify();
-  else if(a==='timer'){const t=T();if(t?.start&&!t.stop)await update(R('meta/timer'),{stop:now()});else await update(R('meta/timer'),{start:now(),stop:null})}
+  else if(a==='timer'){const t=T();if(t?.start&&!t.stop)await update(R('meta/timer'),{stop:now()});else await update(R('meta/timer'),{start:now(),stop:null,dur:cfg().tmode==='down'?(cfg().tdur||60)*1000:null})}
   else if(a==='reveal'){
-    const o={};list().filter(c=>S.sel.has(c.k)).forEach(c=>{o[c.a]={name:c.name,text:c.text||'',img:c.img||null,t:c.t}});
-    await set(R('revealed'),o);S.sel.clear();cards();
+    const o={};list().filter(c=>S.sel.has(c.k)).forEach(c=>{o[c.a]={name:c.name,text:c.text||'',img:c.img||null,t:c.t,mark:c.mark||null}});
+    if(Object.keys(o).length)await update(R(''),Object.fromEntries(Object.entries(o).map(([a,v])=>['revealed/'+a,v])));S.sel.clear();cards();
   }
-  else if(a==='unreveal'){await remove(R('revealed'));$('#mn').close()}
+  else if(a==='unreveal'){await remove(R('revealed'))}
   else if(a==='reset'&&confirm('届いた回答・通知・公開をすべて削除し、回答回数もリセットします。よろしいですか？')){
     S.sel.clear();await update(R(''),{answers:null,results:null,revealed:null});
   }
