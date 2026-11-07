@@ -137,6 +137,9 @@ input[type=text]{font-size:16px}
 .fl{flex-wrap:wrap;gap:6px}.fk{display:flex;gap:6px;align-items:center;min-height:36px;padding:2px 10px;background:#eef1f4;border-radius:8px}
 .card.tgt{outline:3px dashed var(--ink);outline-offset:3px}
 .card{scroll-margin-top:calc(var(--hh,56px) + 80px);scroll-margin-bottom:110px}
+.fb{font-size:.8rem;background:#fff;color:var(--ink);border-radius:99px;padding:0 10px;font-weight:700}.fb.err{background:var(--red);color:#fff}
+.pnl{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px;background:#dde5ed}
+dialog input[type=text]{flex:1;min-width:0}
 </style></head><body><div id="app"></div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -213,11 +216,11 @@ async function join(){
 
 /* ---------- 参加者 ---------- */
 function party(){
-  app.innerHTML=`<header class="top"><span class="code">${E(S.room)}</span><span class="sp"></span><span>${E(S.name)}</span><button id="gs">設定</button></header><div class="tbar" id="tm" hidden></div>
+  app.innerHTML=`<header class="top"><span class="code">${E(S.room)}</span><span class="sp"></span><span id="fb" class="fb" hidden></span><span id="pn">${E(S.name)}</span><button id="gs">設定</button></header><div class="tbar" id="tm" hidden></div>
   <div class="pmain"><div class="left"><section class="info" id="info"><div id="lv" class="rvw" hidden></div><div id="ib"></div></section>
   <form class="ans" id="af"><div id="dz" hidden><div class="tl">${tbs()}</div><canvas id="cv" width="640" height="384"></canvas><div class="tr"><div class="seg"><button type="button" id="ud" data-d="u" aria-label="1つ戻す">↶<small>戻す</small></button><button type="button" id="rd" data-d="r" aria-label="1つ進める">↷<small>進める</small></button><button type="button" data-d="c" aria-label="全消し">${IC.t}<small>全消し</small></button></div><button class="pri" id="ab2">送信</button></div></div><input type="text" id="ai" placeholder="回答を入力" autocomplete="off" maxlength="200">
   <div class="row"><span id="lf"></span><button type="button" id="bd">ボードを下げる</button><button class="pri" id="ab">送信</button></div></form></div><aside class="side" id="pl"></aside></div>
-  <dialog id="gd"><h2>この端末の設定</h2><div class="f"><label for="gc">1行に表示する枚数</label><select id="gc">${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join('')}</select></div><div class="f"><button class="pri" id="gx">閉じる</button></div></dialog>`;
+  <dialog id="gd"><h2>設定</h2><div class="f"><label for="gn">名前</label><input type="text" id="gn" maxlength="12"><button id="gnb">変更</button></div><div class="f"><label for="gc">1行に表示する枚数</label><select id="gc">${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join('')}</select></div><div class="f"><button class="pri" id="gx">閉じる</button></div></dialog>`;
   $('#af').onsubmit=async e=>{
     e.preventDefault();if(full())return;
     const m=cfg().mode||'text',v=m==='draw'?'':$('#ai').value.trim(),ink=m!=='text'&&hasInk();
@@ -228,7 +231,9 @@ function party(){
   };
   initDraw();
   $('#bd').onclick=()=>{const l=$('#af').classList.toggle('low');$('#bd').textContent=l?'ボードを出す':'ボードを下げる'};
-  $('#gs').onclick=()=>$('#gd').showModal();$('#gx').onclick=()=>$('#gd').close();
+  $('#gn').value=S.name;
+  $('#gnb').onclick=async()=>{const n=$('#gn').value.trim();if(!n)return;S.name=n;localStorage.name=n;$('#pn').textContent=n;try{await update(R('players/'+uid),{name:n});$('#gd').close()}catch(e){alert('名前を変更できませんでした')}};
+  $('#gs').onclick=()=>{$('#gn').value=S.name;$('#gd').showModal()};$('#gx').onclick=()=>$('#gd').close();
   $('#gc').value=colsP();$('#gc').onchange=()=>{localStorage.colsP=$('#gc').value;pinfo()};
   setInterval(tick,100);
   S.fm=false;
@@ -244,6 +249,7 @@ const full=()=>cfg().limitOn&&myCount()>=cfg().limit;
 function pinfo(){
   const fo=S.meta?.focus,fm=!!(fo&&fo.mode!=='off'&&fo.users?.[uid]);
   if(fm!==S.fm){S.fm=fm;if(fm)liveSched();else remove(R('live/'+uid)).catch(()=>{})}
+  liveBadge();
   const c=cfg();$('#lf').textContent=c.limitOn?`残り ${Math.max(0,c.limit-myCount())} 回`:'回数制限なし';
   const md=c.mode||'text';$('#dz').hidden=md==='text';$('#ai').hidden=md==='draw';$('#dz').style.opacity=full()?.4:1;
   $('#bd').hidden=md==='text';$('#ab2').disabled=full();
@@ -295,21 +301,24 @@ const enc=()=>D.s.map(t=>{if(t.c)return'c';let last=null;
   return (t.e?1:0)+'|'+t.w+'|'+q.map(p=>Math.round(p[0])+','+Math.round(p[1])).join(';')}).join('\n');
 const parse=str=>(str||'').split('\n').filter(Boolean).map(l=>{if(l==='c')return{c:1};const[a,b,c]=l.split('|');return{e:a==='1',w:+b,p:c.split(';').map(q=>q.split(',').map(Number))}});
 let liveT=0;
-function liveSched(){if(!S.fm||liveT)return;liveT=setTimeout(()=>{liveT=0;set(R('live/'+uid),{d:enc(),t:now()}).catch(()=>{})},120)}
+function liveSched(){if(!S.fm||liveT)return;liveT=setTimeout(()=>{liveT=0;set(R('live/'+uid),{d:enc(),t:now()}).then(()=>{S.le=null;liveBadge()}).catch(e=>{S.le=e.code||'error';liveBadge()})},120)}
+function liveBadge(){const b=$('#fb');if(!b)return;b.hidden=!S.fm;b.className='fb'+(S.le?' err':'');b.textContent=S.le?'⚠ 描画送信エラー':'● フォーカス中'}
 function liveView(box,items){
   const have=new Map([...box.children].map(c=>[c.dataset.id,c]));
   box.style.setProperty('--n',Math.max(1,items.length));
   items.forEach(it=>{
     let c=have.get(it.id);
     if(!c){c=document.createElement('div');c.className='hc lv';c.dataset.id=it.id;c.innerHTML='<small></small><canvas width="640" height="384"></canvas>';box.appendChild(c)}
-    have.delete(it.id);c.firstChild.textContent=it.name+'（描画中）';paint(c.querySelector('canvas'),parse(it.d));
+    have.delete(it.id);c.firstChild.textContent=it.name+(it.wait?'（受信待ち）':'（描画中）');paint(c.querySelector('canvas'),parse(it.d));
   });
   have.forEach(c=>c.remove());
 }
 function livePanel(){
-  const f=S.meta?.focus;
-  const it=(f&&f.mode!=='off')?Object.keys(f.users||{}).filter(u=>S.live&&S.live[u]!==undefined).map(u=>({id:u,name:S.players?.[u]?.name||'?',d:S.live[u].d||''})):[];
-  liveView($('#fp'),it);$('#fpw').hidden=!it.length;
+  const f=S.meta?.focus,us=(f&&f.mode!=='off')?Object.keys(f.users||{}):[];
+  const it=us.map(u=>({id:u,name:S.players?.[u]?.name||'?',d:S.live?.[u]?.d||'',wait:S.live?.[u]===undefined}));
+  liveView($('#fp'),it);
+  $('#fpw').hidden=!it.length&&!S.lerr;
+  $('#fh').textContent=S.lerr?'⚠ ライブ受信エラー（'+S.lerr+'）: Firebaseのルールを更新してください':'フォーカス';
 }
 function relay(){
   const f=S.meta?.focus;S.rl=S.rl||{};
@@ -342,8 +351,9 @@ function initDraw(){
 
 /* ---------- 司会者 ---------- */
 function host(){
-  app.innerHTML=`<header class="top"><span class="code">${E(S.room)}</span><span id="pc"></span><span class="sp"></span><button id="cu">URLをコピー</button></header><div class="tbar" id="tm" hidden></div>
-  <section id="fpw" hidden><h3>フォーカス</h3><div id="fp" class="rvw"></div></section>
+  app.innerHTML=`<header class="top"><span class="code">${E(S.room)}</span><button id="pc">参加 0人</button><span class="sp"></span><button id="cu">URLをコピー</button></header><div class="tbar" id="tm" hidden></div>
+  <section id="pnl" class="pnl" hidden></section>
+  <section id="fpw" hidden><h3 id="fh">フォーカス</h3><div id="fp" class="rvw"></div></section>
   <main class="grid" id="cards"></main>
   <footer class="bar"><button data-a="menu">メニュー</button><button data-a="notify" id="bn">通知</button><button data-a="reveal" id="br">公開</button><button data-a="unreveal" id="bu" hidden>取り下げ</button><button data-a="timer" id="bt">タイマー開始</button><button data-a="treset">タイマーリセット</button><button data-a="reset">リセット</button></footer>
   <dialog id="mn"><h2>設定</h2>
@@ -363,6 +373,7 @@ function host(){
   const cp=async()=>{try{await navigator.clipboard.writeText(joinUrl());alert('コピーしました')}catch(e){prompt('URL',joinUrl())}};
   $('#cu').onclick=cp;$('#cu2').onclick=cp;$('#cl').onclick=()=>$('#mn').close();$('#zm').onclick=()=>$('#zm').close();
   $('#s9').onchange=()=>update(R('meta/focus'),{mode:$('#s9').value});
+  $('#pc').onclick=()=>{$('#pnl').hidden=!$('#pnl').hidden};
   $('#fl').onchange=e=>{const u=e.target.dataset.fu;if(u)update(R('meta/focus/users'),{[u]:e.target.checked?true:null})};
   $('#s5').value=localStorage.colsH||0;$('#s5').onchange=()=>{localStorage.colsH=$('#s5').value;gridCols()};gridCols();
   setInterval(tick,100);
@@ -371,11 +382,11 @@ function host(){
   app.onclick=hclick;
   $('#cards').onchange=e=>{const k=e.target.dataset.sel;if(!k)return;e.target.checked?S.sel.add(k):S.sel.delete(k);bar()};
   onValue(R('meta'),s=>{S.meta=s.val();const c=cfg();$('#s1').checked=c.limitOn;$('#s2').value=c.limit;$('#s3').checked=c.instant;$('#s4').value=c.mode||'text';$('#s6').value=c.tmode||'up';$('#s7').value=c.tdur||60;$('#s8').value=c.tfmt||'ms';const t=T();$('#bt').textContent=(t?.start&&!t.stop)?'タイマー停止':'タイマー開始';$('#s9').value=S.meta?.focus?.mode||'off';renderFocus();livePanel();relay();cards()});
-  onValue(R('players'),s=>{S.players=s.val();$('#pc').textContent=`参加 ${Object.keys(S.players||{}).length}人`;renderFocus();livePanel()});
+  onValue(R('players'),s=>{S.players=s.val();$('#pc').textContent=`参加 ${Object.keys(S.players||{}).length}人`;$('#pnl').innerHTML=Object.values(S.players||{}).map(p=>`<span class="chip">${E(p.name)}</span>`).join('')||'<small>参加者がいません</small>';renderFocus();livePanel();cards()});
   onValue(R('answers'),s=>{S.answers=s.val();cards()});
   onValue(R('results'),s=>{S.results=s.val();cards()});
   onValue(R('revealed'),s=>{S.revealed=s.val();cards()});
-  onValue(R('live'),s=>{S.live=s.val()||{};livePanel();relay()});
+  onValue(R('live'),s=>{S.lerr=null;S.live=s.val()||{};livePanel();relay()},e=>{S.lerr=e.code||'error';livePanel()});
   document.addEventListener('keydown',hk);
 }
 const list=()=>Object.entries(S.answers||{}).flatMap(([u,o])=>Object.entries(o).map(([a,v])=>({u,a,k:u+'/'+a,...v}))).sort((x,y)=>x.t-y.t);
@@ -386,7 +397,7 @@ function cards(){
   const tg=L.find(c=>!c.mark)?.k;
   $('#cards').innerHTML=L.length?L.map((c,i)=>{const rv=!!S.revealed?.[c.a],sl=S.sel.has(c.k),nt=nOn(c),pd=[c.k===tg&&'次の判定',rv&&'公開中',c.mark&&!nt&&'未通知'].filter(Boolean).join(' / ');
     return `<div class="card ${c.mark==='o'?'ok':c.mark==='x'?'ng':''} ${sl?'sel':''} ${c.k===tg?'tgt':''}">
-    <div class="h" data-sel="${c.k}"><span>#${i+1}</span><b>${E(c.name)}</b>${tspan(c,i,t0)}${sl?'<span>✓</span>':''}</div>
+    <div class="h" data-sel="${c.k}"><span>#${i+1}</span><b>${E(S.players?.[c.u]?.name||c.name)}</b>${tspan(c,i,t0)}${sl?'<span>✓</span>':''}</div>
     <div class="t">${c.img?`<img data-z="1" src="${c.img}" alt="手書き回答">`:''}${E(c.text||'')}</div>
     <div class="pend">${pd||'&nbsp;'}</div>
     <div class="b"><button class="o" data-m="o" data-k="${c.k}" aria-label="正解">○</button><button class="x" data-m="x" data-k="${c.k}" aria-label="不正解">×</button><button class="mini ${rv?'on':''}" data-p="${c.k}">公開</button><button class="mini ${nt?'on':''}" data-n="${c.k}">通知</button></div></div>`}).join('')
