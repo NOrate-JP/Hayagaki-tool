@@ -95,6 +95,42 @@ dialog{max-height:90dvh;overflow:auto}
 .tl button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:46px;padding:.2em .4em}
 .sz{display:block;width:20px;border-radius:99px;background:currentColor}
 @media(min-width:900px){.tl{display:grid;grid-auto-flow:column;grid-template-rows:repeat(3,auto)}}
+/* --- スクロール修正: 画面全体でスクロールし、バーは固定表示 --- */
+#app{height:auto;min-height:100dvh}
+header.top{position:sticky;top:0;z-index:20}
+.tbar{position:sticky;top:var(--hh,56px);z-index:15}
+.grid{flex:1 0 auto;overflow:visible}
+footer.bar{position:sticky;bottom:0;z-index:20;box-shadow:0 -2px 8px rgba(19,35,58,.12)}
+footer.bar button[data-a=reset]{color:var(--red)}
+.pmain,.left{min-height:auto}
+.info{flex:1 0 auto;overflow:visible}
+.ans{position:sticky;bottom:0;z-index:10;max-height:62dvh;overflow:auto;box-shadow:0 -2px 8px rgba(19,35,58,.1)}
+input[type=text]{font-size:16px}
+/* --- 手書きボードUI --- */
+.grp{display:flex;align-items:center;gap:6px}.gl{display:none;font-size:.8rem;color:var(--mut)}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.seg button{border:0;border-radius:0;min-height:44px;min-width:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:.2em .5em}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--ink);color:#fff}
+.seg button small{font-size:.68rem;line-height:1}
+.tl,.tr{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0;justify-content:center;align-items:center}
+#cv{box-shadow:0 1px 4px rgba(19,35,58,.18);border-radius:10px}
+.ans .row{margin-top:10px}
+@media(min-width:900px){
+.gl{display:block}.grp{flex-direction:column;align-items:stretch}
+.tl{display:flex;flex-direction:column;gap:16px;margin:0;justify-content:flex-start;align-items:stretch}
+.tr{flex-direction:column;align-items:stretch;margin:0;gap:14px;justify-content:flex-start}
+.seg{flex-direction:column}.seg button+button{border-left:0;border-top:1px solid var(--line)}
+.seg button{flex-direction:row;gap:8px;min-width:96px}
+#ab2{min-height:52px;font-size:1.05rem}
+#cv{max-height:48dvh}
+}
+/* --- 司会者カード --- */
+.card{box-shadow:0 1px 3px rgba(19,35,58,.15)}
+.card .h{font-size:.8rem;gap:4px}.card .h span{white-space:nowrap}
+.card .h span:first-child{background:var(--ink);color:#fff;border-radius:6px;padding:0 .5em;font-weight:700}
+.card.sel .h span:first-child{background:#fff;color:var(--ink)}
+.neg{color:#d92d33;font-weight:700}.card.sel .h .neg{color:#ff9b9b}
 </style></head><body><div id="app"></div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -173,7 +209,7 @@ async function join(){
 function party(){
   app.innerHTML=`<header class="top"><span class="code">${E(S.room)}</span><span class="sp"></span><span>${E(S.name)}</span><button id="gs">設定</button></header><div class="tbar" id="tm" hidden></div>
   <div class="pmain"><div class="left"><section class="info" id="info"></section>
-  <form class="ans" id="af"><div id="dz" hidden><div class="tl">${tbs()}</div><canvas id="cv" width="640" height="384"></canvas><div class="tr"><button type="button" id="ud" data-d="u" aria-label="1つ戻す">↶ 戻す</button><button type="button" id="rd" data-d="r" aria-label="1つ進める">↷ 進める</button><button type="button" data-d="c">全消し</button><button class="pri" id="ab2">送信</button></div></div><input type="text" id="ai" placeholder="回答を入力" autocomplete="off" maxlength="200">
+  <form class="ans" id="af"><div id="dz" hidden><div class="tl">${tbs()}</div><canvas id="cv" width="640" height="384"></canvas><div class="tr"><div class="seg"><button type="button" id="ud" data-d="u" aria-label="1つ戻す">↶<small>戻す</small></button><button type="button" id="rd" data-d="r" aria-label="1つ進める">↷<small>進める</small></button><button type="button" data-d="c" aria-label="全消し">${IC.t}<small>全消し</small></button></div><button class="pri" id="ab2">送信</button></div></div><input type="text" id="ai" placeholder="回答を入力" autocomplete="off" maxlength="200">
   <div class="row"><span id="lf"></span><button type="button" id="bd">ボードを下げる</button><button class="pri" id="ab">送信</button></div></form></div><aside class="side" id="pl"></aside></div>
   <dialog id="gd"><h2>この端末の設定</h2><div class="f"><label for="gc">1行に表示する枚数</label><select id="gc">${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join('')}</select></div><div class="f"><button class="pri" id="gx">閉じる</button></div></dialog>`;
   $('#af').onsubmit=async e=>{
@@ -217,13 +253,16 @@ const fmt=(ms,dn)=>{
   return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');
 };
 const tmText=()=>{const t=T();if(!t?.start)return'';const el=(t.stop||now())-t.start;return t.dur?fmt(t.dur-el,1):fmt(el,0)};
-const tick=()=>{const e=$('#tm');if(!e)return;const t=tmText();e.hidden=!t;e.textContent=t};
+const tick=()=>{const hd=$('header.top');if(hd)document.documentElement.style.setProperty('--hh',hd.offsetHeight+'px');const e=$('#tm');if(!e)return;const t=tmText();e.hidden=!t;e.textContent=t};
 const SV='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">';
-const IC={p:SV+'<path d="M4 20l1-4L16.5 4.5l3 3L8 19z"/><path d="M14 7l3 3"/></svg>',e:SV+'<path d="M14.5 4.5l5 5L10 19H5.5l-2-2z"/><path d="M8 11l5 5"/></svg>'};
-const tbs=()=>['p','e'].flatMap(k=>[0,1,2].map(l=>`<button type="button" data-t="${k}${l}" aria-label="${k==='p'?'ペン':'消しゴム'}${'細中太'[l]}" title="${k==='p'?'ペン':'消しゴム'}${'細中太'[l]}">${IC[k]}<i class="sz" style="height:${[2,4,7][l]}px"></i></button>`)).join('');
+const IC={p:SV+'<path d="M4 20l1-4L16.5 4.5l3 3L8 19z"/><path d="M14 7l3 3"/></svg>',e:SV+'<path d="M14.5 4.5l5 5L10 19H5.5l-2-2z"/><path d="M8 11l5 5"/></svg>',t:SV+'<path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/></svg>'};
+const tbs=()=>['p','e'].map(k=>{const n=k==='p'?'ペン':'消しゴム';return `<div class="grp"><span class="gl">${n}</span><div class="seg">${[0,1,2].map(l=>`<button type="button" data-t="${k}${l}" aria-label="${n}${'細中太'[l]}" title="${n}${'細中太'[l]}">${IC[k]}<i class="sz" style="height:${[2,4,7][l]}px"></i></button>`).join('')}</div></div>`}).join('');
 const colsP=()=>+localStorage.colsP||(innerWidth>=900?4:2);
 const gridCols=()=>{$('#cards').style.gridTemplateColumns=+localStorage.colsH?`repeat(${localStorage.colsH},1fr)`:''};
-const tt=(c,i,t0)=>{const st=T()?.start;return st&&c.t>=st?((c.t-st)/1000).toFixed(3)+'s':(i?'+'+((c.t-t0)/1000).toFixed(3)+'s':'')};
+const tspan=(c,i,t0)=>{const t=T(),st=t?.start;let x='',neg=false;
+  if(st&&c.t>=st){if(t.dur){const r=(t.dur-(c.t-st))/1000;neg=r<0;x='残'+r.toFixed(3)+'s'}else x=((c.t-st)/1000).toFixed(3)+'s'}
+  else if(i)x='+'+((c.t-t0)/1000).toFixed(3)+'s';
+  return `<span class="${neg?'neg':''}">${x}</span>`};
 
 /* ---------- 手書きボード ---------- */
 const D={s:[],r:[],t:'p',l:1,cur:null},SZ={p:[4,8,16],e:[14,28,52]};
@@ -293,7 +332,7 @@ function cards(){
   const L=list(),t0=L[0]?.t;
   $('#cards').innerHTML=L.length?L.map((c,i)=>{const rv=!!S.revealed?.[c.a],sl=S.sel.has(c.k),nt=nOn(c),pd=[rv&&'公開中',c.mark&&!nt&&'未通知'].filter(Boolean).join(' / ');
     return `<div class="card ${c.mark==='o'?'ok':c.mark==='x'?'ng':''} ${sl?'sel':''}">
-    <div class="h" data-sel="${c.k}"><span>#${i+1}</span><b>${E(c.name)}</b><span>${tt(c,i,t0)}</span>${sl?'<span>✓</span>':''}</div>
+    <div class="h" data-sel="${c.k}"><span>#${i+1}</span><b>${E(c.name)}</b>${tspan(c,i,t0)}${sl?'<span>✓</span>':''}</div>
     <div class="t">${c.img?`<img data-z="1" src="${c.img}" alt="手書き回答">`:''}${E(c.text||'')}</div>
     <div class="pend">${pd||'&nbsp;'}</div>
     <div class="b"><button class="o" data-m="o" data-k="${c.k}" aria-label="正解">○</button><button class="x" data-m="x" data-k="${c.k}" aria-label="不正解">×</button><button class="mini ${rv?'on':''}" data-p="${c.k}">公開</button><button class="mini ${nt?'on':''}" data-n="${c.k}">通知</button></div></div>`}).join('')
