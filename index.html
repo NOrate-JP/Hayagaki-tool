@@ -174,6 +174,16 @@ html[data-tgt="0"] .card.tgt{outline:none}
 #ey{min-height:36px;padding:.2em .5em;display:flex;align-items:center}
 header.top .code{min-width:5ch}
 dialog button[id=me]{min-height:36px;padding:.2em .6em;display:flex;align-items:center}
+/* --- 長押しの範囲選択を防止 --- */
+body{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.ans,.ans *,header.top,header.top *,.tbar,footer.bar,footer.bar *,.card .h,.card .b,.card .b *{-webkit-user-select:none;user-select:none}
+.ans input[type=text]{-webkit-user-select:text;user-select:text}
+#cv{-webkit-touch-callout:none;touch-action:none}
+/* --- カード内ボタン: 幅に応じて2×2 / 1行 --- */
+.card .b{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px 8px}
+.card .b button{flex:none;width:100%;min-width:0;padding-left:0;padding-right:0}
+@container (min-width:250px){.card .b{grid-template-columns:1fr 1fr auto auto}.card .b .mini{width:auto;padding:0 .8em}}
+.card.ok .b .o{border:2px solid var(--oktx)}.card.ng .b .x{border:2px solid var(--ngtx)}
 </style></head><body><div id="app"></div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -409,6 +419,8 @@ function initDraw(){
   cv.onpointerdown=e=>{if(full())return;e.preventDefault();cv.setPointerCapture(e.pointerId);D.cur={e:D.t==='e',w:SZ[D.t][D.l],p:[pt(e)]};D.s.push(D.cur);D.r=[];draw()};
   cv.onpointermove=e=>{if(!D.cur)return;D.cur.p.push(pt(e));draw()};
   cv.onpointerup=cv.onpointercancel=()=>{D.cur=null};
+  cv.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
+  cv.oncontextmenu=e=>e.preventDefault();$('#dz').oncontextmenu=e=>e.preventDefault();
   $('#dz').onclick=e=>{
     const b=e.target.closest('button');if(!b)return;
     if(b.dataset.t){D.t=b.dataset.t[0];D.l=+b.dataset.t[1];tools()}
@@ -490,11 +502,9 @@ function cards(){
   L.forEach(c=>{lastK[c.u]=c.k});document.documentElement.dataset.tgt=tgOn?'1':'0';
   $('#cards').innerHTML=L.length?L.map((c,i)=>{
     const rv=c0.share?pubOn(c):!!S.revealed?.[c.a],sl=S.sel.has(c.k),nt=nOn(c),pk=S.peek.has(c.k),hp=c0.share&&c0.hprv&&!rv,hd=hp&&!pk;
-    const pd=[tgOn&&c.k===tg&&'次の判定',rv&&'公開中',c.mark&&!nt&&'未通知',hp&&pk&&'確認中（タップで隠す）'].filter(Boolean).join(' / ');
     return `<div class="card ${c.mark==='o'?'ok':c.mark==='x'?'ng':''} ${sl?'sel':''} ${c.k===tg?'tgt':''} ${fx&&lastK[c.u]!==c.k?'dim':''}">
     <div class="h" data-sel="${c.k}"><span>#${i+1}</span><b>${E(S.players?.[c.u]?.name||c.name)}</b>${tspan(c,i,t0)}${sl?'<span>✓</span>':''}</div>
     <div class="t">${hd?`<div class="ph" data-peek="${c.k}">非公開<small>タップで確認</small></div>`:(c.img?`<img data-z="1" src="${c.img}" alt="手書き回答">`:'')+E(c.text||'')}</div>
-    <div class="pend" ${hp&&pk?`data-peek="${c.k}"`:''}>${pd||'&nbsp;'}</div>
     <div class="b"><button class="o" data-m="o" data-k="${c.k}" aria-label="正解">○</button><button class="x" data-m="x" data-k="${c.k}" aria-label="不正解">×</button><button class="mini ${rv?'on':''}" data-p="${c.k}">公開</button><button class="mini ${nt?'on':''}" data-n="${c.k}">通知</button></div></div>`}).join('')
     :'<p class="empty">回答が届くとここに並びます</p>';
   bar();seats();histRelay();
