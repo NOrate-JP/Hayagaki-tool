@@ -163,6 +163,14 @@ html[data-ngc=red]{--ngbg:#e5484d}
 dialog details{border:1px solid var(--line);border-radius:10px;margin:8px 0;padding:0 12px}
 dialog summary{cursor:pointer;font-weight:700;padding:10px 0}
 dialog .f>label{flex:1}dialog .f select{max-width:60%}
+.card .b button{color:var(--ink)}
+.card.ok .b .o{color:var(--oktx)}.card.ng .b .x{color:var(--ngtx)}
+.card .b .mini.on{color:#fff}
+.seat small button{color:var(--ink)}
+html[data-tgt="0"] .card.tgt{outline:none}
+.card.dim,.card.dim.ok,.card.dim.ng,.hc.seat.dim,.hc.seat.dim.ok,.hc.seat.dim.ng{background:#e6eaee;border-color:#d5dbe2;color:#8995a5}
+.card.dim .t img,.hc.seat.dim .t img{filter:grayscale(1);mix-blend-mode:normal;opacity:.55;background:#fff}
+.card.dim .h,.hc.seat.dim small{background:rgba(19,35,58,.04)}
 </style></head><body><div id="app"></div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -249,7 +257,7 @@ function party(){
   <div class="pmain"><div class="left"><section class="info" id="info"><div id="lv" class="rvw" hidden></div><div id="ib"></div></section>
   <form class="ans" id="af"><div id="dz" hidden><div class="tl">${tbs()}</div><canvas id="cv" width="640" height="384"></canvas><div class="tr"><div class="seg"><button type="button" id="ud" data-d="u" aria-label="1つ戻す">↶<small>戻す</small></button><button type="button" id="rd" data-d="r" aria-label="1つ進める">↷<small>進める</small></button><button type="button" data-d="c" aria-label="全消し">${IC.t}<small>全消し</small></button></div><button class="pri" id="ab2">送信</button></div></div><input type="text" id="ai" placeholder="回答を入力" autocomplete="off" maxlength="200">
   <div class="row"><span id="lf"></span><button type="button" id="bd">ボードを下げる</button><button class="pri" id="ab">送信</button></div></form></div><aside class="side" id="pl"></aside></div>
-  <dialog id="gd"><h2>設定</h2><div class="f"><label for="gn">名前</label><input type="text" id="gn" maxlength="12"><button id="gnb">変更</button></div><div class="f"><label for="gc">1行に表示する枚数</label><select id="gc">${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join('')}</select></div><div class="f"><button class="pri" id="gx">閉じる</button></div></dialog>`;
+  <dialog id="gd"><h2>設定</h2><div class="f"><label for="gn">名前</label><input type="text" id="gn" maxlength="12"><button id="gnb">変更</button></div><div class="f"><label for="gc">1行に表示する枚数</label><select id="gc"><option value="0">自動</option>${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join('')}</select></div><div class="f"><button class="pri" id="gx">閉じる</button></div></dialog>`;
   $('#af').onsubmit=async e=>{
     e.preventDefault();if(full())return;
     const m=cfg().mode||'text',v=m==='draw'?'':$('#ai').value.trim(),ink=m!=='text'&&hasInk();
@@ -263,8 +271,9 @@ function party(){
   $('#gn').value=S.name;
   $('#gnb').onclick=async()=>{const n=$('#gn').value.trim();if(!n)return;S.name=n;localStorage.name=n;$('#pn').textContent=n;try{await update(R('players/'+uid),{name:n});$('#gd').close()}catch(e){alert('名前を変更できませんでした')}};
   $('#gs').onclick=()=>{$('#gn').value=S.name;$('#gd').showModal()};$('#gx').onclick=()=>$('#gd').close();
-  $('#gc').value=colsP();$('#gc').onchange=()=>{localStorage.colsP=$('#gc').value;pinfo()};
+  $('#gc').value=localStorage.colsP||0;$('#gc').onchange=()=>{localStorage.colsP=$('#gc').value;pinfo()};
   setInterval(tick,100);
+  addEventListener('resize',()=>{if(!+localStorage.colsP)pinfo()});
   S.fm=false;
   onValue(R('meta'),s=>{S.meta=s.val();pinfo()});
   onValue(R('players'),s=>{S.players=s.val();$('#pl').innerHTML=Object.values(S.players||{}).map(p=>`<span class="chip">${E(p.name)}</span>`).join('')});
@@ -285,7 +294,7 @@ function pinfo(){
   $('#bd').hidden=md==='text';$('#ab2').disabled=full();
   $('#ab').disabled=full();$('#ai').disabled=full();
   const c0=cfg(),de=document.documentElement;de.dataset.okc=c0.okc;de.dataset.ngc=c0.ngc;
-  const cols=`style="grid-template-columns:repeat(${colsP()},1fr)"`;
+  const colsS=n=>`style="grid-template-columns:repeat(${colsP(n)},1fr)"`;
   const card=(cls,hd,body)=>`<div class="hc ${cls}"><small>${hd}</small><div class="t">${body}</div></div>`;
   const lab=m=>m==='o'?'○ 正解':m==='x'?'× 不正解':'';
   const cl=m=>m==='o'?'ok':m==='x'?'ng':'';
@@ -293,7 +302,7 @@ function pinfo(){
   if(c0.share){
     const hv=Object.entries(S.hist||{}).map(([k,e])=>({k,...e})).sort((a,b)=>a.o-b.o);
     const lm=()=>{const a=Object.entries(S.mine||{}).sort((x,y)=>y[1].t-x[1].t)[0];return a?{id:a[0],v:a[1]}:null};
-    html='<h3>みんなの回答</h3>'+(hv.length?`<div class="hg" ${cols}>`+hv.map(e=>{
+    html='<h3>みんなの回答</h3>'+(hv.length?`<div class="hg" ${colsS(hv.length)}>`+hv.map(e=>{
       let img=e.img,tx=e.tx,m=e.m;const me=e.u===uid;
       if(me){const x=S.mine?.[e.k]?{id:e.k,v:S.mine[e.k]}:(c0.sort==='fixed'?lm():null);if(x){img=x.v.img;tx=x.v.text;m=S.results?.[x.id]||null}}
       const nm=e.n!==undefined?E(e.n):(me?'あなた':'');
@@ -304,7 +313,7 @@ function pinfo(){
     const rv=Object.values(S.revealed||{}).sort((a,b)=>a.t-b.t);
     const my=Object.entries(S.mine||{}).map(([a,v])=>({a,...v})).sort((x,y)=>y.t-x.t);
     html=(rv.length?`<h3>公開された回答</h3><div class="rvw" style="--n:${rv.length}">`+rv.map(r=>card(cl(r.mark),E(r.name)+(r.mark==='o'?' ○':r.mark==='x'?' ×':''),(r.img?`<img src="${r.img}">`:'')+(r.text?E(r.text):''))).join('')+'</div>':'')
-     +'<h3>あなたの回答</h3>'+(my.length?`<div class="hg" ${cols}>`+my.map(v=>{const m=S.results?.[v.a];return card(cl(m),m?lab(m):'送信済み',(v.img?`<img src="${v.img}">`:'')+(v.text?E(v.text):''))}).join('')+'</div>':'<p class="mut">回答を入力して送信してください</p>');
+     +'<h3>あなたの回答</h3>'+(my.length?`<div class="hg" ${colsS(my.length)}>`+my.map(v=>{const m=S.results?.[v.a];return card(cl(m),m?lab(m):'送信済み',(v.img?`<img src="${v.img}">`:'')+(v.text?E(v.text):''))}).join('')+'</div>':'<p class="mut">回答を入力して送信してください</p>');
   }
   $('#ib').innerHTML=html;
 }
@@ -323,7 +332,9 @@ const tick=()=>{const hd=$('header.top');if(hd)document.documentElement.style.se
 const SV='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">';
 const IC={p:SV+'<path d="M4 20l1-4L16.5 4.5l3 3L8 19z"/><path d="M14 7l3 3"/></svg>',e:SV+'<path d="M14.5 4.5l5 5L10 19H5.5l-2-2z"/><path d="M8 11l5 5"/></svg>',t:SV+'<path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/></svg>'};
 const tbs=()=>['p','e'].map(k=>{const n=k==='p'?'ペン':'消しゴム';return `<div class="grp"><span class="gl">${n}</span><div class="seg">${[0,1,2].map(l=>`<button type="button" data-t="${k}${l}" aria-label="${n}${'細中太'[l]}" title="${n}${'細中太'[l]}">${IC[k]}<i class="sz" style="height:${[2,4,7][l]}px"></i></button>`).join('')}</div></div>`}).join('');
-const colsP=()=>+localStorage.colsP||(innerWidth>=900?4:2);
+const colsP=n=>{const v=+localStorage.colsP;if(v>0)return v;
+  const w=($('#ib')?.clientWidth||innerWidth)-8,mx=Math.max(1,Math.floor(w/150)),mn=Math.max(1,Math.ceil(w/420));
+  return Math.max(mn,Math.min(n||1,mx))};
 const gridCols=()=>{$('#cards').style.gridTemplateColumns=+localStorage.colsH?`repeat(${localStorage.colsH},1fr)`:''};
 const tdiff=(c,i,t0)=>{const t=T(),st=t?.start;let x='',neg=false;
   if(st&&c.t>=st){if(t.dur){const r=(t.dur-(c.t-st))/1000;neg=r<0;x='残'+r.toFixed(3)+'s'}else x=((c.t-st)/1000).toFixed(3)+'s'}
@@ -351,7 +362,7 @@ const enc=()=>D.s.map(t=>{if(t.c)return'c';let last=null;
 const parse=str=>(str||'').split('\n').filter(Boolean).map(l=>{if(l==='c')return{c:1};const[a,b,c]=l.split('|');return{e:a==='1',w:+b,p:c.split(';').map(q=>q.split(',').map(Number))}});
 let liveT=0;
 function liveSched(){if(!S.fm||liveT)return;liveT=setTimeout(()=>{liveT=0;set(R('live/'+uid),{d:enc(),t:now()}).then(()=>{S.le=null;liveBadge()}).catch(e=>{S.le=e.code||'error';liveBadge()})},120)}
-function liveBadge(){const b=$('#fb');if(!b)return;b.hidden=!S.fm;b.className='fb'+(S.le?' err':'');b.textContent=S.le?'⚠ 描画送信エラー':'● フォーカス中'}
+function liveBadge(){const b=$('#fb');if(!b)return;const e=!!(S.fm&&S.le);b.hidden=!e;b.className='fb err';b.textContent='⚠ 描画送信エラー'}
 function liveView(box,items){
   const have=new Map([...box.children].map(c=>[c.dataset.id,c]));
   box.style.setProperty('--n',Math.max(1,items.length));
@@ -431,6 +442,7 @@ function host(){
   <div class="f fl" id="fl"></div></details>
   <details><summary>この端末・部屋</summary>
   <div class="f"><label for="s5">1行の枚数</label><select id="s5"><option value="0">自動</option>${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join('')}</select></div>
+  <div class="f"><input type="checkbox" id="sj"><label for="sj">次の判定対象の枠を表示（Q/W用）</label></div>
   <div class="f"><span>参加コード <b>${E(S.room)}</b></span><button id="cu2">参加URLをコピー</button></div></details>
   <div class="f"><button class="pri" id="cl">閉じる</button></div></dialog>
   <dialog id="zm"><img id="zi" style="width:100%;display:block"></dialog>`;
@@ -439,6 +451,7 @@ function host(){
   $('#s9').onchange=()=>update(R('meta/focus'),{mode:$('#s9').value});
   $('#pc').onclick=()=>{$('#pnl').hidden=!$('#pnl').hidden};
   $('#fl').onchange=e=>{const u=e.target.dataset.fu;if(u)update(R('meta/focus/users'),{[u]:e.target.checked?true:null})};
+  $('#sj').checked=localStorage.tgt!=='0';$('#sj').onchange=()=>{localStorage.tgt=$('#sj').checked?'1':'0';cards()};
   $('#s5').value=localStorage.colsH||0;$('#s5').onchange=()=>{localStorage.colsH=$('#s5').value;gridCols()};gridCols();
   setInterval(tick,100);
   const sv=async()=>{const o={};Object.entries(ST).forEach(([id,[k,t]])=>{const el=$('#'+id);o[k]=t==='c'?el.checked:t==='n'?Math.max(1,+el.value||1):el.value});await update(R('meta/settings'),o);if(o.instant)notify()};
@@ -460,11 +473,12 @@ const order=()=>{const pl=S.players||{},sv=(S.meta?.order||'').split(',').filter
   return[...sv,...Object.keys(pl).filter(u=>!sv.includes(u)).sort((a,b)=>(pl[a].t||0)-(pl[b].t||0))]};
 const pubOn=c=>c.pb===undefined?cfg().ipub:c.pb;
 function cards(){
-  const c0=cfg(),L=list(),t0=L[0]?.t,tg=L.find(c=>!c.mark)?.k;
+  const c0=cfg(),L=list(),t0=L[0]?.t,tgOn=localStorage.tgt!=='0',tg=L.find(c=>!c.mark)?.k,fx=c0.share&&c0.sort==='fixed',lastK={};
+  L.forEach(c=>{lastK[c.u]=c.k});document.documentElement.dataset.tgt=tgOn?'1':'0';
   $('#cards').innerHTML=L.length?L.map((c,i)=>{
     const rv=c0.share?pubOn(c):!!S.revealed?.[c.a],sl=S.sel.has(c.k),nt=nOn(c),pk=S.peek.has(c.k),hp=c0.share&&c0.hprv&&!rv,hd=hp&&!pk;
-    const pd=[c.k===tg&&'次の判定',rv&&'公開中',c.mark&&!nt&&'未通知',hp&&pk&&'確認中（タップで隠す）'].filter(Boolean).join(' / ');
-    return `<div class="card ${c.mark==='o'?'ok':c.mark==='x'?'ng':''} ${sl?'sel':''} ${c.k===tg?'tgt':''}">
+    const pd=[tgOn&&c.k===tg&&'次の判定',rv&&'公開中',c.mark&&!nt&&'未通知',hp&&pk&&'確認中（タップで隠す）'].filter(Boolean).join(' / ');
+    return `<div class="card ${c.mark==='o'?'ok':c.mark==='x'?'ng':''} ${sl?'sel':''} ${c.k===tg?'tgt':''} ${fx&&(!rv||lastK[c.u]!==c.k)?'dim':''}">
     <div class="h" data-sel="${c.k}"><span>#${i+1}</span><b>${E(S.players?.[c.u]?.name||c.name)}</b>${tspan(c,i,t0)}${sl?'<span>✓</span>':''}</div>
     <div class="t">${hd?`<div class="ph" data-peek="${c.k}">非公開<small>タップで確認</small></div>`:(c.img?`<img data-z="1" src="${c.img}" alt="手書き回答">`:'')+E(c.text||'')}</div>
     <div class="pend" ${hp&&pk?`data-peek="${c.k}"`:''}>${pd||'&nbsp;'}</div>
@@ -479,7 +493,7 @@ function seats(){
   box.innerHTML='<h3>席順（ドラッグか◀▶で並べ替え）</h3><div class="sw">'+order().map(u=>{
     const c=last[u],nm=E(S.players?.[u]?.name||'?'),hd=c&&c0.hprv&&!pubOn(c)&&!S.peek.has(c.k);
     const body=!c?'<span class="mut">未回答</span>':hd?'<div class="ph">非公開</div>':(c.img?`<img src="${c.img}">`:'')+E(c.text||'');
-    return `<div class="hc seat ${c?.mark==='o'?'ok':c?.mark==='x'?'ng':''}" draggable="true" data-su="${u}"><small><button data-mv="-1" data-u="${u}">◀</button>${nm}<button data-mv="1" data-u="${u}">▶</button></small><div class="t">${body}</div></div>`}).join('')+'</div>';
+    return `<div class="hc seat ${c?.mark==='o'?'ok':c?.mark==='x'?'ng':''} ${!c||!pubOn(c)?'dim':''}" draggable="true" data-su="${u}"><small><button data-mv="-1" data-u="${u}">◀</button>${nm}<button data-mv="1" data-u="${u}">▶</button></small><div class="t">${body}</div></div>`}).join('')+'</div>';
   box.ondragstart=e=>{const t=e.target.closest('[data-su]');if(t){S.drag=t.dataset.su;e.dataTransfer.effectAllowed='move'}};
   box.ondragover=e=>{if(S.drag)e.preventDefault()};
   box.ondragend=()=>{S.drag=null};
