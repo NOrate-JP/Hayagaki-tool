@@ -171,6 +171,9 @@ html[data-tgt="0"] .card.tgt{outline:none}
 .card.dim,.card.dim.ok,.card.dim.ng,.hc.seat.dim,.hc.seat.dim.ok,.hc.seat.dim.ng{background:#e6eaee;border-color:#d5dbe2;color:#8995a5}
 .card.dim .t img,.hc.seat.dim .t img{filter:grayscale(1);mix-blend-mode:normal;opacity:.55;background:#fff}
 .card.dim .h,.hc.seat.dim small{background:rgba(19,35,58,.04)}
+#ey{min-height:36px;padding:.2em .5em;display:flex;align-items:center}
+header.top .code{min-width:5ch}
+dialog button[id=me]{min-height:36px;padding:.2em .6em;display:flex;align-items:center}
 </style></head><body><div id="app"></div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -207,12 +210,19 @@ const R=p=>ref(db,`rooms/${S.room}${p?'/'+p:''}`);
 const CH='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const gen=()=>Array.from({length:5},()=>CH[Math.random()*CH.length|0]).join('');
 const joinUrl=()=>location.origin+location.pathname+'?room='+S.room;
-const DEF={limitOn:false,limit:1,instant:true,mode:'text',tmode:'up',tdur:60,tfmt:'ms',okc:'red',ngc:'blue',share:false,sort:'send',vname:'pub',vtime:'hide',vmark:'pub',ipub:false,hprv:false};
+const DEF={limitOn:false,limit:1,instant:true,mode:'text',tmode:'up',tdur:60,tfmt:'ms',okc:'red',ngc:'blue',share:false,sort:'send',vname:'pub',vtime:'hide',vmark:'pub',ipub:false,hprv:false,hideId:false};
 const cfg=()=>({...DEF,...(S.meta?.settings||{})});
-const ST={s1:['limitOn','c'],s2:['limit','n'],s3:['instant','c'],s4:['mode'],s6:['tmode'],s7:['tdur','n'],s8:['tfmt'],sa:['okc'],sb:['ngc'],sc:['share','c'],sd:['sort'],se:['vname'],sf:['vtime'],sg:['vmark'],sh:['ipub','c'],si:['hprv','c']};
+const EY='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">';
+const EYE=EY+'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYEOFF=EY+'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M3 3l18 18"/></svg>';
+function showId(){const r=$('#rid'),e=$('#ey');if(!r||!e)return;const h=cfg().hideId;
+  r.textContent=h&&!S.idv?'•••••':S.room;e.hidden=!h;e.innerHTML=S.idv?EYEOFF:EYE;e.setAttribute('aria-label',S.idv?'IDを隠す':'IDを表示')}
+function updMid(){const m=$('#mid'),b=$('#me');if(!m)return;m.textContent=S.midv?S.room:'•••••';b.innerHTML=S.midv?EYEOFF:EYE;b.setAttribute('aria-label',S.midv?'IDを隠す':'IDを表示')}
+const bd=d=>d.addEventListener('click',e=>{if(e.target!==d)return;const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()});
+const ST={s1:['limitOn','c'],s2:['limit','n'],s3:['instant','c'],s4:['mode'],s6:['tmode'],s7:['tdur','n'],s8:['tfmt'],sa:['okc'],sb:['ngc'],sc:['share','c'],sd:['sort'],se:['vname'],sf:['vtime'],sg:['vmark'],sh:['ipub','c'],si:['hprv','c'],sk:['hideId','c']};
 function applySet(c){
   Object.entries(ST).forEach(([id,[k,t]])=>{const el=$('#'+id);if(el)t==='c'?el.checked=!!c[k]:el.value=c[k]});
-  $('#shg').hidden=!c.share;
+  $('#shg').hidden=!c.share;showId();
 }
 
 async function init(){
@@ -253,7 +263,7 @@ async function join(){
 
 /* ---------- 参加者 ---------- */
 function party(){
-  app.innerHTML=`<header class="top"><span class="code">${E(S.room)}</span><span class="sp"></span><span id="fb" class="fb" hidden></span><span id="pn">${E(S.name)}</span><button id="gs">設定</button></header><div class="tbar" id="tm" hidden></div>
+  app.innerHTML=`<header class="top"><span class="code" id="rid"></span><button id="ey" hidden></button><span class="sp"></span><span id="fb" class="fb" hidden></span><span id="pn">${E(S.name)}</span><button id="gs">設定</button></header><div class="tbar" id="tm" hidden></div>
   <div class="pmain"><div class="left"><section class="info" id="info"><div id="lv" class="rvw" hidden></div><div id="ib"></div></section>
   <form class="ans" id="af"><div id="dz" hidden><div class="tl">${tbs()}</div><canvas id="cv" width="640" height="384"></canvas><div class="tr"><div class="seg"><button type="button" id="ud" data-d="u" aria-label="1つ戻す">↶<small>戻す</small></button><button type="button" id="rd" data-d="r" aria-label="1つ進める">↷<small>進める</small></button><button type="button" data-d="c" aria-label="全消し">${IC.t}<small>全消し</small></button></div><button class="pri" id="ab2">送信</button></div></div><input type="text" id="ai" placeholder="回答を入力" autocomplete="off" maxlength="200">
   <div class="row"><span id="lf"></span><button type="button" id="bd">ボードを下げる</button><button class="pri" id="ab">送信</button></div></form></div><aside class="side" id="pl"></aside></div>
@@ -270,7 +280,7 @@ function party(){
   $('#bd').onclick=()=>{const l=$('#af').classList.toggle('low');$('#bd').textContent=l?'ボードを出す':'ボードを下げる'};
   $('#gn').value=S.name;
   $('#gnb').onclick=async()=>{const n=$('#gn').value.trim();if(!n)return;S.name=n;localStorage.name=n;$('#pn').textContent=n;try{await update(R('players/'+uid),{name:n});$('#gd').close()}catch(e){alert('名前を変更できませんでした')}};
-  $('#gs').onclick=()=>{$('#gn').value=S.name;$('#gd').showModal()};$('#gx').onclick=()=>$('#gd').close();
+  $('#gs').onclick=()=>{$('#gn').value=S.name;$('#gd').showModal()};$('#gx').onclick=()=>$('#gd').close();bd($('#gd'));$('#ey').onclick=()=>{S.idv=!S.idv;showId()};showId();
   $('#gc').value=localStorage.colsP||0;$('#gc').onchange=()=>{localStorage.colsP=$('#gc').value;pinfo()};
   setInterval(tick,100);
   addEventListener('resize',()=>{if(!+localStorage.colsP)pinfo()});
@@ -288,7 +298,7 @@ const full=()=>cfg().limitOn&&myCount()>=cfg().limit;
 function pinfo(){
   const fo=S.meta?.focus,fm=!!(fo&&fo.mode!=='off'&&fo.users?.[uid]);
   if(fm!==S.fm){S.fm=fm;if(fm)liveSched();else remove(R('live/'+uid)).catch(()=>{})}
-  liveBadge();
+  liveBadge();showId();
   const c=cfg();$('#lf').textContent=c.limitOn?`残り ${Math.max(0,c.limit-myCount())} 回`:'回数制限なし';
   const md=c.mode||'text';$('#dz').hidden=md==='text';$('#ai').hidden=md==='draw';$('#dz').style.opacity=full()?.4:1;
   $('#bd').hidden=md==='text';$('#ab2').disabled=full();
@@ -411,7 +421,7 @@ function initDraw(){
 
 /* ---------- 司会者 ---------- */
 function host(){
-  app.innerHTML=`<header class="top"><span class="code">${E(S.room)}</span><button id="pc">参加 0人</button><span class="sp"></span><button id="cu">URLをコピー</button></header><div class="tbar" id="tm" hidden></div>
+  app.innerHTML=`<header class="top"><span class="code" id="rid"></span><button id="ey" hidden></button><button id="pc">参加 0人</button><span class="sp"></span><button id="cu">URLをコピー</button></header><div class="tbar" id="tm" hidden></div>
   <section id="pnl" class="pnl" hidden></section>
   <section id="seat" class="seatw" hidden></section>
   <section id="fpw" hidden><h3 id="fh">フォーカス</h3><div id="fp" class="rvw"></div></section>
@@ -442,14 +452,17 @@ function host(){
   <div class="f fl" id="fl"></div></details>
   <details><summary>この端末・部屋</summary>
   <div class="f"><label for="s5">1行の枚数</label><select id="s5"><option value="0">自動</option>${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join('')}</select></div>
+  <div class="f"><input type="checkbox" id="sk"><label for="sk">左上の部屋IDを隠す（全員の画面）</label></div>
   <div class="f"><input type="checkbox" id="sj"><label for="sj">次の判定対象の枠を表示（Q/W用）</label></div>
-  <div class="f"><span>参加コード <b>${E(S.room)}</b></span><button id="cu2">参加URLをコピー</button></div></details>
+  <div class="f"><span>参加コード <b id="mid">•••••</b></span><button id="me">${EYE}</button><button id="cu2">参加URLをコピー</button></div></details>
   <div class="f"><button class="pri" id="cl">閉じる</button></div></dialog>
   <dialog id="zm"><img id="zi" style="width:100%;display:block"></dialog>`;
   const cp=async()=>{try{await navigator.clipboard.writeText(joinUrl());alert('コピーしました')}catch(e){prompt('URL',joinUrl())}};
   $('#cu').onclick=cp;$('#cu2').onclick=cp;$('#cl').onclick=()=>$('#mn').close();$('#zm').onclick=()=>$('#zm').close();
   $('#s9').onchange=()=>update(R('meta/focus'),{mode:$('#s9').value});
   $('#pc').onclick=()=>{$('#pnl').hidden=!$('#pnl').hidden};
+  $('#ey').onclick=()=>{S.idv=!S.idv;showId()};showId();
+  $('#me').onclick=()=>{S.midv=!S.midv;updMid()};bd($('#mn'));
   $('#fl').onchange=e=>{const u=e.target.dataset.fu;if(u)update(R('meta/focus/users'),{[u]:e.target.checked?true:null})};
   $('#sj').checked=localStorage.tgt!=='0';$('#sj').onchange=()=>{localStorage.tgt=$('#sj').checked?'1':'0';cards()};
   $('#s5').value=localStorage.colsH||0;$('#s5').onchange=()=>{localStorage.colsH=$('#s5').value;gridCols()};gridCols();
@@ -478,7 +491,7 @@ function cards(){
   $('#cards').innerHTML=L.length?L.map((c,i)=>{
     const rv=c0.share?pubOn(c):!!S.revealed?.[c.a],sl=S.sel.has(c.k),nt=nOn(c),pk=S.peek.has(c.k),hp=c0.share&&c0.hprv&&!rv,hd=hp&&!pk;
     const pd=[tgOn&&c.k===tg&&'次の判定',rv&&'公開中',c.mark&&!nt&&'未通知',hp&&pk&&'確認中（タップで隠す）'].filter(Boolean).join(' / ');
-    return `<div class="card ${c.mark==='o'?'ok':c.mark==='x'?'ng':''} ${sl?'sel':''} ${c.k===tg?'tgt':''} ${fx&&(!rv||lastK[c.u]!==c.k)?'dim':''}">
+    return `<div class="card ${c.mark==='o'?'ok':c.mark==='x'?'ng':''} ${sl?'sel':''} ${c.k===tg?'tgt':''} ${fx&&lastK[c.u]!==c.k?'dim':''}">
     <div class="h" data-sel="${c.k}"><span>#${i+1}</span><b>${E(S.players?.[c.u]?.name||c.name)}</b>${tspan(c,i,t0)}${sl?'<span>✓</span>':''}</div>
     <div class="t">${hd?`<div class="ph" data-peek="${c.k}">非公開<small>タップで確認</small></div>`:(c.img?`<img data-z="1" src="${c.img}" alt="手書き回答">`:'')+E(c.text||'')}</div>
     <div class="pend" ${hp&&pk?`data-peek="${c.k}"`:''}>${pd||'&nbsp;'}</div>
@@ -493,7 +506,7 @@ function seats(){
   box.innerHTML='<h3>席順（ドラッグか◀▶で並べ替え）</h3><div class="sw">'+order().map(u=>{
     const c=last[u],nm=E(S.players?.[u]?.name||'?'),hd=c&&c0.hprv&&!pubOn(c)&&!S.peek.has(c.k);
     const body=!c?'<span class="mut">未回答</span>':hd?'<div class="ph">非公開</div>':(c.img?`<img src="${c.img}">`:'')+E(c.text||'');
-    return `<div class="hc seat ${c?.mark==='o'?'ok':c?.mark==='x'?'ng':''} ${!c||!pubOn(c)?'dim':''}" draggable="true" data-su="${u}"><small><button data-mv="-1" data-u="${u}">◀</button>${nm}<button data-mv="1" data-u="${u}">▶</button></small><div class="t">${body}</div></div>`}).join('')+'</div>';
+    return `<div class="hc seat ${c?.mark==='o'?'ok':c?.mark==='x'?'ng':''}" draggable="true" data-su="${u}"><small><button data-mv="-1" data-u="${u}">◀</button>${nm}<button data-mv="1" data-u="${u}">▶</button></small><div class="t">${body}</div></div>`}).join('')+'</div>';
   box.ondragstart=e=>{const t=e.target.closest('[data-su]');if(t){S.drag=t.dataset.su;e.dataTransfer.effectAllowed='move'}};
   box.ondragover=e=>{if(S.drag)e.preventDefault()};
   box.ondragend=()=>{S.drag=null};
@@ -566,7 +579,7 @@ async function hclick(e){
   if(b.dataset.p)return togglePub(find(b.dataset.p));
   if(b.dataset.n){const c=find(b.dataset.n);return setCard(c,{nt:!nOn(c)})}
   const a=b.dataset.a;
-  if(a==='menu')$('#mn').showModal();
+  if(a==='menu'){S.midv=false;updMid();$('#mn').showModal()}
   else if(a==='notify')notify();
   else if(a==='treset')await set(R('meta/timer'),{armed:true,dur:cfg().tmode==='down'?(cfg().tdur||60)*1000:null});
   else if(a==='timer'){const t=T();if(t?.start&&!t.stop)await update(R('meta/timer'),{stop:now()});else await update(R('meta/timer'),{start:now(),stop:null,dur:cfg().tmode==='down'?(cfg().tdur||60)*1000:null})}
