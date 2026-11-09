@@ -184,6 +184,16 @@ body{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 .card .b button{flex:none;width:100%;min-width:0;padding-left:0;padding-right:0}
 @container (min-width:250px){.card .b{grid-template-columns:1fr 1fr auto auto}.card .b .mini{width:auto;padding:0 .8em}}
 .card.ok .b .o{border:2px solid var(--oktx)}.card.ng .b .x{border:2px solid var(--ngtx)}
+.kb{display:none;font-size:.7rem;opacity:.75;margin-left:2px}
+.pri .kb{color:#cdd6e2;opacity:1}
+dialog input[type=file]{max-width:100%;min-width:0;flex:1}
+dialog .f{flex-wrap:wrap}
+@media(min-width:900px){
+.kb{display:inline}
+#mn{width:min(1040px,94vw)}
+#mn .dc{columns:2;column-gap:20px}
+#mn details{break-inside:avoid}
+}
 </style></head><body><div id="app"></div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -220,7 +230,7 @@ const R=p=>ref(db,`rooms/${S.room}${p?'/'+p:''}`);
 const CH='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const gen=()=>Array.from({length:5},()=>CH[Math.random()*CH.length|0]).join('');
 const joinUrl=()=>location.origin+location.pathname+'?room='+S.room;
-const DEF={limitOn:false,limit:1,instant:true,mode:'text',tmode:'up',tdur:60,tfmt:'ms',okc:'red',ngc:'blue',share:false,sort:'send',vname:'pub',vtime:'hide',vmark:'pub',ipub:false,hprv:false,hideId:false};
+const DEF={limitOn:false,limit:1,instant:true,mode:'draw',tmode:'up',tdur:60,tfmt:'ms',okc:'red',ngc:'blue',share:false,sort:'send',vname:'pub',vtime:'hide',vmark:'pub',ipub:false,hprv:false,hideId:false};
 const cfg=()=>({...DEF,...(S.meta?.settings||{})});
 const EY='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">';
 const EYE=EY+'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -228,6 +238,31 @@ const EYEOFF=EY+'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle
 function showId(){const r=$('#rid'),e=$('#ey');if(!r||!e)return;const h=cfg().hideId;
   r.textContent=h&&!S.idv?'•••••':S.room;e.hidden=!h;e.innerHTML=S.idv?EYEOFF:EYE;e.setAttribute('aria-label',S.idv?'IDを隠す':'IDを表示')}
 function updMid(){const m=$('#mid'),b=$('#me');if(!m)return;m.textContent=S.midv?S.room:'•••••';b.innerHTML=S.midv?EYEOFF:EYE;b.setAttribute('aria-label',S.midv?'IDを隠す':'IDを表示')}
+const loadImg=src=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src});
+const bgMsg=t=>{const e=$('#bgs');if(e)e.textContent=t};
+function afterBg(){
+  if($('#cv'))paint($('#cv'),D.s);
+  if(S.lpItems&&$('#lv'))liveView($('#lv'),S.lpItems);
+  if($('#fp'))livePanel();
+  const p=$('#bgp');if(p){p.hidden=!S.bgEl;if(S.bgSrc)p.src=S.bgSrc}
+}
+function bgApply(v){
+  if(!v?.img){S.bgEl=null;S.bgKey=null;S.bgSrc='';afterBg();return}
+  if(S.bgKey===v.t)return;S.bgKey=v.t;S.bgSrc=v.img;
+  loadImg(v.img).then(i=>{S.bgEl=i;afterBg()}).catch(()=>{});
+}
+async function bgFromBlob(b){
+  const u=URL.createObjectURL(b);let im;try{im=await loadImg(u)}finally{URL.revokeObjectURL(u)}
+  const W=640,H=384,k=Math.min(W/im.width,H/im.height),w=im.width*k,h=im.height*k;
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
+  x.fillStyle='#fff';x.fillRect(0,0,W,H);x.drawImage(im,(W-w)/2,(H-h)/2,w,h);
+  const d=x.getImageData(0,0,W,H),a=d.data;
+  for(let i=0;i<a.length;i+=4){const g=Math.round(a[i]*.299+a[i+1]*.587+a[i+2]*.114);a[i]=a[i+1]=a[i+2]=g;a[i+3]=255}
+  x.putImageData(d,0,0);
+  let o=cv.toDataURL('image/png');if(o.length>380000)o=cv.toDataURL('image/jpeg',.75);
+  await set(R('bg'),{img:o,t:now()});
+}
+async function bgSet(b){try{bgMsg('変換中…');await bgFromBlob(b);bgMsg('設定しました')}catch(e){bgMsg('画像を読み込めませんでした')}}
 const bd=d=>d.addEventListener('click',e=>{if(e.target!==d)return;const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()});
 const ST={s1:['limitOn','c'],s2:['limit','n'],s3:['instant','c'],s4:['mode'],s6:['tmode'],s7:['tdur','n'],s8:['tfmt'],sa:['okc'],sb:['ngc'],sc:['share','c'],sd:['sort'],se:['vname'],sf:['vtime'],sg:['vmark'],sh:['ipub','c'],si:['hprv','c'],sk:['hideId','c']};
 function applySet(c){
@@ -275,7 +310,7 @@ async function join(){
 function party(){
   app.innerHTML=`<header class="top"><span class="code" id="rid"></span><button id="ey" hidden></button><span class="sp"></span><span id="fb" class="fb" hidden></span><span id="pn">${E(S.name)}</span><button id="gs">設定</button></header><div class="tbar" id="tm" hidden></div>
   <div class="pmain"><div class="left"><section class="info" id="info"><div id="lv" class="rvw" hidden></div><div id="ib"></div></section>
-  <form class="ans" id="af"><div id="dz" hidden><div class="tl">${tbs()}</div><canvas id="cv" width="640" height="384"></canvas><div class="tr"><div class="seg"><button type="button" id="ud" data-d="u" aria-label="1つ戻す">↶<small>戻す</small></button><button type="button" id="rd" data-d="r" aria-label="1つ進める">↷<small>進める</small></button><button type="button" data-d="c" aria-label="全消し">${IC.t}<small>全消し</small></button></div><button class="pri" id="ab2">送信</button></div></div><input type="text" id="ai" placeholder="回答を入力" autocomplete="off" maxlength="200">
+  <form class="ans" id="af"><div id="dz" hidden><div class="tl">${tbs()}</div><canvas id="cv" width="640" height="384"></canvas><div class="tr"><div class="seg"><button type="button" id="ud" data-d="u" aria-label="1つ戻す">↶<small>戻す<span class="kb">Z</span></small></button><button type="button" id="rd" data-d="r" aria-label="1つ進める">↷<small>進める<span class="kb">X</span></small></button><button type="button" data-d="c" aria-label="全消し">${IC.t}<small>全消し</small></button></div><button class="pri" id="ab2">送信<span class="kb">Enter</span></button></div></div><input type="text" id="ai" placeholder="回答を入力" autocomplete="off" maxlength="200">
   <div class="row"><span id="lf"></span><button type="button" id="bd">ボードを下げる</button><button class="pri" id="ab">送信</button></div></form></div><aside class="side" id="pl"></aside></div>
   <dialog id="gd"><h2>設定</h2><div class="f"><label for="gn">名前</label><input type="text" id="gn" maxlength="12"><button id="gnb">変更</button></div><div class="f"><label for="gc">1行に表示する枚数</label><select id="gc"><option value="0">自動</option>${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join('')}</select></div><div class="f"><button class="pri" id="gx">閉じる</button></div></dialog>`;
   $('#af').onsubmit=async e=>{
@@ -301,7 +336,9 @@ function party(){
   onValue(R('results/'+uid),s=>{S.results=s.val();pinfo()});
   onValue(R('revealed'),s=>{S.revealed=s.val();pinfo()});
   onValue(R('hist'),s=>{S.hist=s.val();pinfo()});
-  onValue(R('livepub'),s=>{const it=Object.entries(s.val()||{}).map(([id,v])=>({id,name:v.n||'',d:v.d||''}));liveView($('#lv'),it);$('#lv').hidden=!it.length});
+  onValue(R('bg'),s=>bgApply(s.val()));
+  document.addEventListener('keydown',pk);
+  onValue(R('livepub'),s=>{const it=Object.entries(s.val()||{}).map(([id,v])=>({id,name:v.n||'',d:v.d||''}));S.lpItems=it;liveView($('#lv'),it);$('#lv').hidden=!it.length});
 }
 const myCount=()=>Object.keys(S.mine||{}).length;
 const full=()=>cfg().limitOn&&myCount()>=cfg().limit;
@@ -351,7 +388,8 @@ const tmText=()=>{const t=T();if(!t)return'';
 const tick=()=>{const hd=$('header.top');if(hd)document.documentElement.style.setProperty('--hh',hd.offsetHeight+'px');const e=$('#tm');if(!e)return;const t=tmText();e.hidden=!t;e.textContent=t};
 const SV='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">';
 const IC={p:SV+'<path d="M4 20l1-4L16.5 4.5l3 3L8 19z"/><path d="M14 7l3 3"/></svg>',e:SV+'<path d="M14.5 4.5l5 5L10 19H5.5l-2-2z"/><path d="M8 11l5 5"/></svg>',t:SV+'<path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/></svg>'};
-const tbs=()=>['p','e'].map(k=>{const n=k==='p'?'ペン':'消しゴム';return `<div class="grp"><span class="gl">${n}</span><div class="seg">${[0,1,2].map(l=>`<button type="button" data-t="${k}${l}" aria-label="${n}${'細中太'[l]}" title="${n}${'細中太'[l]}">${IC[k]}<i class="sz" style="height:${[2,4,7][l]}px"></i></button>`).join('')}</div></div>`}).join('');
+const KEYS={p:['E','W','Q'],e:['D','S','A']};
+const tbs=()=>['p','e'].map(k=>{const n=k==='p'?'ペン':'消しゴム';return `<div class="grp"><span class="gl">${n}</span><div class="seg">${[0,1,2].map(l=>`<button type="button" data-t="${k}${l}" aria-label="${n}${'細中太'[l]}" title="${n}${'細中太'[l]}（${KEYS[k][l]}）">${IC[k]}<i class="sz" style="height:${[2,4,7][l]}px"></i><span class="kb">${KEYS[k][l]}</span></button>`).join('')}</div></div>`}).join('');
 const colsP=n=>{const v=+localStorage.colsP;if(v>0)return v;
   const w=($('#ib')?.clientWidth||innerWidth)-8,mx=Math.max(1,Math.floor(w/150)),mn=Math.max(1,Math.ceil(w/420));
   return Math.max(mn,Math.min(n||1,mx))};
@@ -374,6 +412,7 @@ function paint(cv,L){
     t.p.forEach((q,i)=>i?x.lineTo(q[0],q[1]):x.moveTo(q[0],q[1]));
     if(t.p.length===1)x.lineTo(t.p[0][0]+.01,t.p[0][1]);x.stroke();
   });
+  if(S.bgEl){x.globalCompositeOperation='multiply';x.drawImage(S.bgEl,0,0,W,H);x.globalCompositeOperation='source-over'}
 }
 function draw(){paint($('#cv'),D.s);$('#ud').disabled=!D.s.length;$('#rd').disabled=!D.r.length;liveSched()}
 const enc=()=>D.s.map(t=>{if(t.c)return'c';let last=null;
@@ -382,6 +421,16 @@ const enc=()=>D.s.map(t=>{if(t.c)return'c';let last=null;
 const parse=str=>(str||'').split('\n').filter(Boolean).map(l=>{if(l==='c')return{c:1};const[a,b,c]=l.split('|');return{e:a==='1',w:+b,p:c.split(';').map(q=>q.split(',').map(Number))}});
 let liveT=0;
 function liveSched(){if(!S.fm||liveT)return;liveT=setTimeout(()=>{liveT=0;set(R('live/'+uid),{d:enc(),t:now()}).then(()=>{S.le=null;liveBadge()}).catch(e=>{S.le=e.code||'error';liveBadge()})},120)}
+function pk(e){
+  if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('dialog[open]'))return;
+  const inp=e.target.closest?.('input,select,textarea'),af=$('#af');if(!af)return;
+  if(e.code==='Enter'||e.code==='NumpadEnter'){if(inp)return;e.preventDefault();if(!$('#ab').disabled)$('#ab').click();return}
+  if(inp||$('#dz').hidden||af.classList.contains('low'))return;
+  const M={KeyQ:'p2',KeyW:'p1',KeyE:'p0',KeyA:'e2',KeyS:'e1',KeyD:'e0'};
+  if(M[e.code]){e.preventDefault();document.querySelector(`[data-t="${M[e.code]}"]`)?.click()}
+  else if(e.code==='KeyZ'){e.preventDefault();$('#ud').click()}
+  else if(e.code==='KeyX'){e.preventDefault();$('#rd').click()}
+}
 function liveBadge(){const b=$('#fb');if(!b)return;const e=!!(S.fm&&S.le);b.hidden=!e;b.className='fb err';b.textContent='⚠ 描画送信エラー'}
 function liveView(box,items){
   const have=new Map([...box.children].map(c=>[c.dataset.id,c]));
@@ -439,7 +488,7 @@ function host(){
   <section id="fpw" hidden><h3 id="fh">フォーカス</h3><div id="fp" class="rvw"></div></section>
   <main class="grid" id="cards"></main>
   <footer class="bar"><button data-a="menu">メニュー</button><button data-a="notify" id="bn">通知</button><button data-a="reveal" id="br">公開</button><button data-a="unreveal" id="bu" hidden>取り下げ</button><button data-a="timer" id="bt">タイマー開始</button><button data-a="treset">タイマーリセット</button><button data-a="reset">リセット</button></footer>
-  <dialog id="mn"><h2>設定</h2>
+  <dialog id="mn"><h2>設定</h2><div class="dc">
   <details open><summary>回答</summary>
   <div class="f"><label for="s4">回答方式</label><select id="s4"><option value="text">文字</option><option value="draw">手書き</option><option value="both">文字＋手書き</option></select></div>
   <div class="f"><input type="checkbox" id="s1"><label for="s1">回答回数を制限する</label><input type="number" id="s2" min="1" max="99"><span>回</span></div>
@@ -462,12 +511,17 @@ function host(){
   <details><summary>フォーカス</summary>
   <div class="f"><label for="s9">モード</label><select id="s9"><option value="off">OFF</option><option value="host">司会のみ</option><option value="all">全体公開</option></select></div>
   <div class="f fl" id="fl"></div></details>
+  <details><summary>ボード背景画像</summary>
+  <div class="f"><input type="file" id="bgf" accept="image/*"></div>
+  <div class="f"><button id="bgc">クリップボードから貼り付け</button><button id="bgd">削除</button></div>
+  <div class="f"><small id="bgs">Ctrl+V（⌘V）でも貼り付けできます。白は透過され、線は判定色に合わせて変わります。</small></div>
+  <img id="bgp" hidden alt="背景プレビュー" style="max-width:100%;max-height:90px;border:1px solid var(--line);background:#fff;margin-bottom:10px"></details>
   <details><summary>この端末・部屋</summary>
   <div class="f"><label for="s5">1行の枚数</label><select id="s5"><option value="0">自動</option>${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join('')}</select></div>
   <div class="f"><input type="checkbox" id="sk"><label for="sk">左上の部屋IDを隠す（全員の画面）</label></div>
   <div class="f"><input type="checkbox" id="sj"><label for="sj">次の判定対象の枠を表示（Q/W用）</label></div>
   <div class="f"><span>参加コード <b id="mid">•••••</b></span><button id="me">${EYE}</button><button id="cu2">参加URLをコピー</button></div></details>
-  <div class="f"><button class="pri" id="cl">閉じる</button></div></dialog>
+  </div><div class="f"><button class="pri" id="cl">閉じる</button></div></dialog>
   <dialog id="zm"><img id="zi" style="width:100%;display:block"></dialog>`;
   const cp=async()=>{try{await navigator.clipboard.writeText(joinUrl());alert('コピーしました')}catch(e){prompt('URL',joinUrl())}};
   $('#cu').onclick=cp;$('#cu2').onclick=cp;$('#cl').onclick=()=>$('#mn').close();$('#zm').onclick=()=>$('#zm').close();
@@ -490,6 +544,11 @@ function host(){
   onValue(R('revealed'),s=>{S.revealed=s.val();cards()});
   onValue(R('live'),s=>{S.lerr=null;S.live=s.val()||{};livePanel();relay()},e=>{S.lerr=e.code||'error';livePanel()});
   document.addEventListener('keydown',hk);
+  onValue(R('bg'),s=>bgApply(s.val()));
+  document.addEventListener('paste',e=>{if(e.target.closest?.('input,textarea'))return;const f=[...(e.clipboardData?.files||[])].find(f=>f.type.startsWith('image/'));if(f){e.preventDefault();bgSet(f)}});
+  $('#bgf').onchange=e=>{const f=e.target.files[0];if(f)bgSet(f);e.target.value=''};
+  $('#bgc').onclick=async()=>{try{for(const i of await navigator.clipboard.read()){const ty=i.types.find(t=>t.startsWith('image/'));if(ty){await bgSet(await i.getType(ty));return}}bgMsg('クリップボードに画像がありません')}catch(e){bgMsg('貼り付けできませんでした。Ctrl+V（⌘V）を押してください')}};
+  $('#bgd').onclick=()=>{remove(R('bg'));bgMsg('削除しました')};
 }
 const list=()=>Object.entries(S.answers||{}).flatMap(([u,o])=>Object.entries(o).map(([a,v])=>({u,a,k:u+'/'+a,...v}))).sort((x,y)=>x.t-y.t);
 const pub=c=>S.results?.[c.u]?.[c.a]||null;
@@ -589,7 +648,7 @@ async function hclick(e){
   if(b.dataset.p)return togglePub(find(b.dataset.p));
   if(b.dataset.n){const c=find(b.dataset.n);return setCard(c,{nt:!nOn(c)})}
   const a=b.dataset.a;
-  if(a==='menu'){S.midv=false;updMid();$('#mn').showModal()}
+  if(a==='menu'){S.midv=false;updMid();if(window.matchMedia&&matchMedia('(min-width:900px)').matches)document.querySelectorAll('#mn details').forEach(d=>d.open=true);$('#mn').showModal()}
   else if(a==='notify')notify();
   else if(a==='treset')await set(R('meta/timer'),{armed:true,dur:cfg().tmode==='down'?(cfg().tdur||60)*1000:null});
   else if(a==='timer'){const t=T();if(t?.start&&!t.stop)await update(R('meta/timer'),{stop:now()});else await update(R('meta/timer'),{start:now(),stop:null,dur:cfg().tmode==='down'?(cfg().tdur||60)*1000:null})}
