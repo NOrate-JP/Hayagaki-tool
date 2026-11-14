@@ -209,4 +209,6 @@ dialog .f{flex-wrap:wrap}
 .mk{border-radius:99px;padding:0 8px;font-weight:700;font-size:.85rem}
 .mk.ok{background:var(--okbg);color:var(--oktx)}.mk.ng{background:var(--ngbg);color:var(--ngtx)}
 </style></head><body><div id="app"></div>
-<script type="module" src="app.js"></script></body></html>
+<script type="module">
+import('./app.js').catch(e=>{document.getElementById('app').innerHTML='<div style="margin:40px auto;max-width:480px;padding:16px;font-family:sans-serif"><h1>読み込みエラー</h1><p>app.js を読み込めませんでした。index.html と同じフォルダにあるか確認してください。</p><pre style="white-space:pre-wrap;color:#c00">'+String(e&&e.message||e).replace(/</g,'&lt;')+'</pre></div>'});
+</script></body></html>

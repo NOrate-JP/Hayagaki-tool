@@ -2,7 +2,6 @@ import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase
 import {getAuth,signInAnonymously} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {getDatabase,ref,set,get,update,push,remove,onValue} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-import {firebaseConfig} from "./config.js";
 
 const E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const $=s=>document.querySelector(s),app=$('#app');
@@ -53,7 +52,12 @@ function applySet(c){
   $('#shg').hidden=!c.share;showId();
 }
 
+const showErr=(t,h,e)=>{app.innerHTML=`<div class="home"><h1>${E(t)}</h1><p class="err">${E(h)}${e?'<br>'+E(e.message):''}</p></div>`};
 async function init(){
+  let firebaseConfig;
+  try{({firebaseConfig}=await import('./config.js'));if(!firebaseConfig)throw new Error('「export const firebaseConfig」が見つかりません')}
+  catch(e){return showErr('設定ファイル config.js を読み込めません','config.js が index.html と同じフォルダにあるか、中身が「export const firebaseConfig={…}」の形になっているか確認してください。',e)}
+  if(/YOUR_/.test(JSON.stringify(firebaseConfig)))return showErr('Firebaseの設定が未入力です','config.js の「YOUR_…」の部分を、Firebaseの設定値に書き換えてください。');
   try{
     const a=initializeApp(firebaseConfig);db=getDatabase(a);
     const au=getAuth(a);await signInAnonymously(au);uid=au.currentUser.uid;
