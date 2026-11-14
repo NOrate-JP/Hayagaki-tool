@@ -26,11 +26,39 @@
         "results": {
           ".read": "auth != null && root.child('rooms').child($code).child('meta/host').val() === auth.uid",
           ".write": "auth != null && root.child('rooms').child($code).child('meta/host').val() === auth.uid",
-          "$uid": { ".read": "auth != null && $uid === auth.uid" }
+          "$uid": {
+            ".read": "auth != null && $uid === auth.uid"
+          }
         },
         "revealed": {
           ".read": "auth != null",
           ".write": "auth != null && root.child('rooms').child($code).child('meta/host').val() === auth.uid"
+        },
+        "live": {
+          ".read": "auth != null && root.child('rooms').child($code).child('meta/host').val() === auth.uid",
+          ".write": "auth != null && root.child('rooms').child($code).child('meta/host').val() === auth.uid",
+          "$uid": {
+            ".read": "auth != null && $uid === auth.uid",
+            ".write": "auth != null && $uid === auth.uid",
+            "d": {
+              ".validate": "newData.isString() && newData.val().length < 200000"
+            }
+          }
+        },
+        "livepub": {
+          ".read": "auth != null",
+          ".write": "auth != null && root.child('rooms').child($code).child('meta/host').val() === auth.uid"
+        },
+        "hist": {
+          ".read": "auth != null",
+          ".write": "auth != null && root.child('rooms').child($code).child('meta/host').val() === auth.uid"
+        },
+        "bg": {
+          ".read": "auth != null",
+          ".write": "auth != null && root.child('rooms').child($code).child('meta/host').val() === auth.uid",
+          "img": {
+            ".validate": "newData.isString() && newData.val().length < 400000"
+          }
         }
       }
     }
