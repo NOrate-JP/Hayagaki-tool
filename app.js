@@ -12,7 +12,7 @@ const R=p=>ref(db,`rooms/${S.room}${p?'/'+p:''}`);
 const CH='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const gen=()=>Array.from({length:5},()=>CH[Math.random()*CH.length|0]).join('');
 const joinUrl=()=>location.origin+location.pathname+'?room='+S.room;
-const DEF={limitOn:false,limit:1,instant:true,mode:'draw',tmode:'up',tdur:60,tfmt:'ms',okc:'red',ngc:'blue',share:false,sort:'send',vname:'pub',vtime:'hide',vmark:'pub',ipub:false,hprv:false,hideId:false,tshow:true,tlock:false};
+const DEF={limitOn:false,limit:1,instant:true,mode:'draw',tmode:'up',tdur:60,tfmt:'ms',okc:'red',ngc:'blue',share:false,sort:'send',vname:'pub',vtime:'hide',vmark:'pub',ipub:false,hprv:false,hideId:false,tshow:true,tlock:false,rst:true,bcol:'white'};
 const cfg=()=>({...DEF,...(S.meta?.settings||{})});
 const EY='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">';
 const EYE=EY+'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -23,7 +23,7 @@ function updMid(){const m=$('#mid'),b=$('#me');if(!m)return;m.textContent=S.midv
 const loadImg=src=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src});
 const bgMsg=t=>{const e=$('#bgs');if(e)e.textContent=t};
 function afterBg(){
-  if($('#cv'))paint($('#cv'),D.s);
+  repaint();
   if(S.lpItems&&$('#lv'))liveView($('#lv'),S.lpItems);
   if($('#fp'))livePanel();
   const p=$('#bgp');if(p){p.hidden=!S.bgEl;if(S.bgSrc)p.src=S.bgSrc}
@@ -46,7 +46,7 @@ async function bgFromBlob(b){
 }
 async function bgSet(b){try{bgMsg('変換中…');await bgFromBlob(b);bgMsg('設定しました')}catch(e){bgMsg('画像を読み込めませんでした')}}
 const bd=d=>d.addEventListener('click',e=>{if(e.target!==d)return;const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()});
-const ST={s1:['limitOn','c'],s2:['limit','n'],s3:['instant','c'],s4:['mode'],s6:['tmode'],s7:['tdur','n'],s8:['tfmt'],sa:['okc'],sb:['ngc'],sc:['share','c'],sd:['sort'],se:['vname'],sf:['vtime'],sg:['vmark'],sh:['ipub','c'],si:['hprv','c'],sk:['hideId','c'],ss:['tshow','c'],st:['tlock','c']};
+const ST={s1:['limitOn','c'],s2:['limit','n'],s3:['instant','c'],s4:['mode'],s6:['tmode'],s7:['tdur','n'],s8:['tfmt'],sa:['okc'],sb:['ngc'],sc:['share','c'],sd:['sort'],se:['vname'],sf:['vtime'],sg:['vmark'],sh:['ipub','c'],si:['hprv','c'],sk:['hideId','c'],ss:['tshow','c'],st:['tlock','c'],sm:['rst','c'],sn:['bcol']};
 function applySet(c){
   Object.entries(ST).forEach(([id,[k,t]])=>{const el=$('#'+id);if(el)t==='c'?el.checked=!!c[k]:el.value=c[k]});
   $('#shg').hidden=!c.share;showId();
@@ -95,17 +95,17 @@ async function join(){
 
 /* ---------- 参加者 ---------- */
 function party(){
-  app.innerHTML=`<header class="top"><span class="code" id="rid"></span><button id="ey" hidden></button><span class="sp"></span><span id="fb" class="fb" hidden></span><span id="pn">${E(S.name)}</span><button id="gs">設定</button></header><div class="tbar" id="tm" hidden></div>
+  app.innerHTML=`<header class="top"><span class="code" id="rid"></span><button id="ey" hidden></button><span class="sp"></span><span id="fb" class="fb" hidden></span><span id="sbd" class="fb" hidden>観戦中</span><span id="pn">${E(S.name)}</span><button id="gs">設定</button></header><div class="tbar" id="tm" hidden></div>
   <div class="pmain"><div class="left"><section class="info" id="info"><div id="lv" class="rvw" hidden></div><div id="ib"></div></section>
   <form class="ans" id="af"><div id="dz" hidden><div class="tl">${tbs()}</div><canvas id="cv" width="640" height="384"></canvas><div class="tr"><div class="seg"><button type="button" id="ud" data-d="u" aria-label="1つ戻す">↶<small>戻す<span class="kb">Z</span></small></button><button type="button" id="rd" data-d="r" aria-label="1つ進める">↷<small>進める<span class="kb">X</span></small></button><button type="button" data-d="c" aria-label="全消し">${IC.t}<small>全消し</small></button></div><button class="pri" id="ab2">送信<span class="kb" id="kbs">Enter</span></button></div></div><input type="text" id="ai" placeholder="回答を入力" autocomplete="off" maxlength="200">
   <div class="row"><span id="lf"></span><button type="button" id="bd">ボードを下げる</button><button class="pri" id="ab">送信</button></div></form></div><aside class="side" id="pl"></aside></div>
-  <dialog id="gd"><h2>設定</h2><div class="f"><label for="gn">名前</label><input type="text" id="gn" maxlength="12"><button id="gnb">変更</button></div><div class="f"><label for="gk">送信ショートカット（PC）</label><select id="gk"><option value="Enter">Enter</option><option value="Space">Space</option></select></div><div class="f"><label for="gc">1行に表示する枚数</label><select id="gc"><option value="0">自動</option>${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join('')}</select></div><div class="f"><button class="pri" id="gx">閉じる</button></div></dialog>`;
+  <dialog id="gd"><h2>設定</h2><div class="f"><label for="gn">名前</label><input type="text" id="gn" maxlength="12"><button id="gnb">変更</button></div><div class="f"><input type="checkbox" id="gsp"><label for="gsp">観戦する（回答せず見るだけ）</label></div><div class="f"><label for="gk">送信ショートカット（PC）</label><select id="gk"><option value="Enter">Enter</option><option value="Space">Space</option></select></div><div class="f"><label for="gc">1行に表示する枚数</label><select id="gc"><option value="0">自動</option>${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join('')}</select></div><div class="f"><button class="pri" id="gx">閉じる</button></div></dialog>`;
   $('#af').onsubmit=async e=>{
     e.preventDefault();if(full())return;
     const m=cfg().mode||'text',v=m==='draw'?'':$('#ai').value.trim(),ink=m!=='text'&&hasInk();
     if(!v&&!ink)return;
-    const o={name:S.name,t:now()};if(v)o.text=v;if(ink)o.img=$('#cv').toDataURL('image/png');
-    $('#ai').value='';if(ink){D.s=[];D.r=[];draw()}
+    const o={name:S.name,t:now()};if(v)o.text=v;if(ink)o.img=exportImg();
+    $('#ai').value='';if(ink&&cfg().rst&&!S.grp){D.s=[];D.r=[];draw()}
     await push(R('answers/'+uid),o);
   };
   initDraw();
@@ -115,12 +115,13 @@ function party(){
   $('#gs').onclick=()=>{$('#gn').value=S.name;$('#gd').showModal()};$('#gx').onclick=()=>$('#gd').close();bd($('#gd'));
   $('#gk').value=localStorage.sendKey||'Enter';$('#kbs').textContent=$('#gk').value;$('#gk').onchange=()=>{localStorage.sendKey=$('#gk').value;$('#kbs').textContent=$('#gk').value};
   $('#ib').onclick=e=>{const b=e.target.closest('[data-zs]');if(!b)return;const v=Math.min(8,Math.max(1,(S.cc||2)+(+b.dataset.zs>0?-1:1)));localStorage.colsP=v;$('#gc').value=v;pinfo()};$('#ey').onclick=()=>{S.idv=!S.idv;showId()};showId();
+  $('#gsp').onchange=()=>update(R('players/'+uid),{spec:$('#gsp').checked?true:null});
   $('#gc').value=localStorage.colsP||0;$('#gc').onchange=()=>{localStorage.colsP=$('#gc').value;pinfo()};
   setInterval(()=>{tick();const l=locked();if(l!==S.lk){S.lk=l;pinfo()}},100);
   addEventListener('resize',()=>{if(!+localStorage.colsP)pinfo()});
-  S.fm=false;
+  S.fm=false;S.grp=null;S.shs={};
   onValue(R('meta'),s=>{S.meta=s.val();pinfo()});
-  onValue(R('players'),s=>{S.players=s.val();$('#pl').innerHTML=Object.values(S.players||{}).map(p=>`<span class="chip">${E(p.name)}</span>`).join('')});
+  onValue(R('players'),s=>{S.players=s.val();$('#pl').innerHTML=Object.values(S.players||{}).map(p=>`<span class="chip">${E(p.name)}${p.spec?'（観戦）':''}</span>`).join('');$('#gsp').checked=!!S.players?.[uid]?.spec;pinfo()});
   onValue(R('answers/'+uid),s=>{S.mine=s.val();pinfo()});
   onValue(R('results/'+uid),s=>{S.results=s.val();pinfo()});
   onValue(R('revealed'),s=>{S.revealed=s.val();pinfo()});
@@ -128,20 +129,22 @@ function party(){
   onValue(R('bg'),s=>bgApply(s.val()));
   document.addEventListener('keydown',pk);
   document.addEventListener('keyup',e=>{if(e.code==='Space'&&localStorage.sendKey==='Space'&&!e.target.closest?.('input,select,textarea'))e.preventDefault()});
-  onValue(R('livepub'),s=>{const it=Object.entries(s.val()||{}).map(([id,v])=>({id,name:v.n||'',d:v.d||''}));S.lpItems=it;liveView($('#lv'),it);$('#lv').hidden=!it.length});
+  onValue(R('livepub'),s=>{S.lpA=s.val()||{};mergeLp()});onValue(R('livepubTo/'+uid),s=>{S.lpT=s.val()||{};mergeLp()});
 }
 const myCount=()=>Object.keys(S.mine||{}).length;
 const locked=()=>{const t=T(),c=cfg();if(!c.tlock||!t?.start||!t.dur)return false;return t.dur-((t.stop||now())-t.start)<=0};
 const full=()=>(cfg().limitOn&&myCount()>=cfg().limit)||locked();
 function pinfo(){
+  const g0=S.meta?.groups?.[uid]||null;if(g0!==(S.grp||null))switchGroup(g0);
   const fo=S.meta?.focus,fm=!!(fo&&fo.mode!=='off'&&fo.users?.[uid]);
   if(fm!==S.fm){S.fm=fm;if(fm)liveSched();else remove(R('live/'+uid)).catch(()=>{})}
   liveBadge();showId();
+  const sp=!!S.players?.[uid]?.spec;$('#af').hidden=sp;$('#sbd').hidden=!sp;
   const c=cfg();$('#lf').textContent=locked()?'⏱ タイムアップ：送信ロック中':c.limitOn?`残り ${Math.max(0,c.limit-myCount())} 回`:'回数制限なし';
   const md=c.mode||'text';$('#dz').hidden=md==='text';$('#ai').hidden=md==='draw';$('#dz').style.opacity=full()?.4:1;
   $('#bd').hidden=md==='text';$('#ab2').disabled=full();
   $('#ab').disabled=full();$('#ai').disabled=full();
-  const c0=cfg(),de=document.documentElement;de.dataset.okc=c0.okc;de.dataset.ngc=c0.ngc;
+  const c0=cfg(),de=document.documentElement;de.dataset.okc=c0.okc;de.dataset.ngc=c0.ngc;de.dataset.bcol=c0.bcol;if(S.bc!==c0.bcol){S.bc=c0.bcol;repaint()}
   const colsS=n=>{S.cc=colsP(n);return `style="grid-template-columns:repeat(${S.cc},1fr)"`};
   const card=(cls,hd,body)=>`<div class="hc ${cls}"><small>${hd}</small><div class="t">${body}</div></div>`;
   const ZS='<span class="zm"><button type="button" data-zs="1" aria-label="大きく">＋</button><button type="button" data-zs="-1" aria-label="小さく">－</button></span>';
@@ -194,28 +197,54 @@ const tspan=(c,i,t0)=>{const d=tdiff(c,i,t0);return `<span class="${d.neg?'neg':
 
 /* ---------- 手書きボード ---------- */
 const D={s:[],r:[],t:'p',l:1,cur:null},SZ={p:[4,8,16],e:[14,28,52]};
-const hasInk=()=>{let i=D.s.length;while(i--){if(D.s[i].c)return false;if(!D.s[i].e)return true}return false};
+const inkOf=L=>{let i=L.length;while(i--){if(L[i].c)return false;if(!L[i].e)return true}return false};
+const hasInk=()=>inkOf(D.s)||(!!S.grp&&othersLayers().some(inkOf));
+const TINT={white:'#fff',blue:'#c9defa',yellow:'#fff2a8'};
 const tools=()=>document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===D.t+D.l));
-function paint(cv,L){
-  const x=cv.getContext('2d'),W=cv.width,H=cv.height;x.fillStyle='#fff';x.fillRect(0,0,W,H);
-  L.forEach(t=>{
-    if(t.c){x.fillStyle='#fff';x.fillRect(0,0,W,H);return}
-    x.strokeStyle=t.e?'#fff':'#13233a';x.lineWidth=t.w;x.lineCap=x.lineJoin='round';x.beginPath();
-    t.p.forEach((q,i)=>i?x.lineTo(q[0],q[1]):x.moveTo(q[0],q[1]));
-    if(t.p.length===1)x.lineTo(t.p[0][0]+.01,t.p[0][1]);x.stroke();
+function paint(cv,L,others,white){
+  const x=cv.getContext('2d'),W=cv.width,H=cv.height;
+  x.globalCompositeOperation='source-over';x.fillStyle=white?'#fff':(TINT[cfg().bcol]||'#fff');x.fillRect(0,0,W,H);
+  const lay=S.lay||(S.lay=document.createElement('canvas'));if(lay.width!==W)lay.width=W;if(lay.height!==H)lay.height=H;
+  const y=lay.getContext('2d');
+  [...(others||[]),L].forEach(list=>{
+    y.globalCompositeOperation='source-over';y.clearRect(0,0,W,H);
+    list.forEach(t=>{
+      if(t.c){y.clearRect(0,0,W,H);return}
+      y.globalCompositeOperation=t.e?'destination-out':'source-over';
+      y.strokeStyle='#13233a';y.lineWidth=t.w;y.lineCap=y.lineJoin='round';y.beginPath();
+      t.p.forEach((q,i)=>i?y.lineTo(q[0],q[1]):y.moveTo(q[0],q[1]));
+      if(t.p.length===1)y.lineTo(t.p[0][0]+.01,t.p[0][1]);y.stroke();
+    });
+    y.globalCompositeOperation='source-over';x.drawImage(lay,0,0);
   });
   if(S.bgEl){x.globalCompositeOperation='multiply';x.drawImage(S.bgEl,0,0,W,H);x.globalCompositeOperation='source-over'}
 }
-function draw(){paint($('#cv'),D.s);$('#ud').disabled=!D.s.length;$('#rd').disabled=!D.r.length;liveSched()}
+const othersLayers=()=>Object.entries(S.shs||{}).filter(([u])=>u!==uid).map(([,v])=>parseC(v.d));
+const repaint=()=>{if($('#cv'))paint($('#cv'),D.s,othersLayers())};
+function exportImg(){const t=document.createElement('canvas');t.width=640;t.height=384;paint(t,D.s,othersLayers(),true);return t.toDataURL('image/png')}
+function draw(){repaint();$('#ud').disabled=!D.s.length;$('#rd').disabled=!D.r.length;liveSched();grpSched()}
 const enc=()=>D.s.map(t=>{if(t.c)return'c';let last=null;
   const q=t.p.filter((p,i)=>{if(!last||i===t.p.length-1||Math.hypot(p[0]-last[0],p[1]-last[1])>=2){last=p;return true}return false});
   return (t.e?1:0)+'|'+t.w+'|'+q.map(p=>Math.round(p[0])+','+Math.round(p[1])).join(';')}).join('\n');
 const parse=str=>(str||'').split('\n').filter(Boolean).map(l=>{if(l==='c')return{c:1};const[a,b,c]=l.split('|');return{e:a==='1',w:+b,p:c.split(';').map(q=>q.split(',').map(Number))}});
+const pcache=new Map();
+const parseC=d=>{let r=pcache.get(d);if(!r){r=parse(d);pcache.set(d,r);if(pcache.size>600)pcache.clear()}return r};
 let liveT=0;
 function liveSched(){if(!S.fm||liveT)return;liveT=setTimeout(()=>{liveT=0;set(R('live/'+uid),{d:enc(),t:now()}).then(()=>{S.le=null;liveBadge()}).catch(e=>{S.le=e.code||'error';liveBadge()})},120)}
+let grpT=0;
+function grpSched(){if(!S.grp||grpT)return;const g=S.grp;grpT=setTimeout(()=>{grpT=0;if(S.grp===g)set(R(`shared/${g}/${uid}`),{d:enc(),t:now()}).catch(()=>{})},100)}
+function switchGroup(g){
+  if(S.shUn)S.shUn();S.shUn=null;S.grp=g;S.shs={};
+  if(g){S.shUn=onValue(R('shared/'+g),sn=>{S.shs=sn.val()||{};repaint()});grpSched()}
+  repaint();
+}
+function mergeLp(){
+  const m={...(S.lpA||{}),...(S.lpT||{})},it=Object.entries(m).map(([id,v])=>({id,name:v.n||'',d:v.d||''}));
+  S.lpItems=it;liveView($('#lv'),it);$('#lv').hidden=!it.length;
+}
 function pk(e){
   if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('dialog[open]'))return;
-  const inp=e.target.closest?.('input,select,textarea'),af=$('#af');if(!af)return;
+  const inp=e.target.closest?.('input,select,textarea'),af=$('#af');if(!af||af.hidden)return;
   const sk=localStorage.sendKey||'Enter',isSend=sk==='Space'?e.code==='Space':(e.code==='Enter'||e.code==='NumpadEnter');
   if(isSend){if(inp)return;e.preventDefault();document.activeElement?.blur?.();if(!$('#ab').disabled)$('#ab').click();return}
   if(inp||$('#dz').hidden||af.classList.contains('low'))return;
@@ -225,35 +254,53 @@ function pk(e){
   else if(e.code==='KeyX'){e.preventDefault();$('#rd').click()}
 }
 function liveBadge(){const b=$('#fb');if(!b)return;const e=!!(S.fm&&S.le);b.hidden=!e;b.className='fb err';b.textContent='⚠ 描画送信エラー'}
+function focusD(u){
+  const g=S.meta?.groups?.[u],own=S.live?.[u]?.d||'';
+  if(!g)return own;
+  const mates=Object.entries(S.shAll?.[g]||{}).filter(([m])=>m!==u).map(([,v])=>v.d||'');
+  return [...mates,own].join('\u001e');
+}
 function liveView(box,items){
   const have=new Map([...box.children].map(c=>[c.dataset.id,c]));
   box.style.setProperty('--n',Math.max(1,items.length));
   items.forEach(it=>{
     let c=have.get(it.id);
     if(!c){c=document.createElement('div');c.className='hc lv';c.dataset.id=it.id;c.innerHTML='<small></small><canvas width="640" height="384"></canvas>';box.appendChild(c)}
-    have.delete(it.id);c.firstChild.textContent=it.name+(it.wait?'（受信待ち）':'（描画中）');paint(c.querySelector('canvas'),parse(it.d));
+    have.delete(it.id);c.firstChild.textContent=it.name+(it.wait?'（受信待ち）':'（描画中）');const Ly=(it.d||'').split('\u001e').map(parseC);paint(c.querySelector('canvas'),Ly[Ly.length-1]||[],Ly.slice(0,-1));
   });
   have.forEach(c=>c.remove());
 }
 function livePanel(){
   const f=S.meta?.focus,us=(f&&f.mode!=='off')?Object.keys(f.users||{}):[];
-  const it=us.map(u=>({id:u,name:S.players?.[u]?.name||'?',d:S.live?.[u]?.d||'',wait:S.live?.[u]===undefined}));
+  const it=us.map(u=>({id:u,name:S.players?.[u]?.name||'?',d:focusD(u),wait:S.live?.[u]===undefined}));
   liveView($('#fp'),it);
   $('#fpw').hidden=!it.length&&!S.lerr;
   $('#fh').textContent=S.lerr?'⚠ ライブ受信エラー（'+S.lerr+'）: Firebaseのルールを更新してください':'フォーカス';
 }
 function relay(){
-  const f=S.meta?.focus;S.rl=S.rl||{};
-  if(!(f&&f.mode==='all')){if(Object.keys(S.rl).length){S.rl={};remove(R('livepub'))}return}
-  Object.keys(S.rl).forEach(u=>{if(!f.users?.[u]||S.live?.[u]===undefined){delete S.rl[u];remove(R('livepub/'+u))}});
-  Object.keys(f.users||{}).forEach(u=>{
-    const v=S.live?.[u];if(v===undefined)return;const d=v.d||'';
-    if(S.rl[u]!==d){S.rl[u]=d;set(R('livepub/'+u),{d,n:S.players?.[u]?.name||''})}
+  const f=S.meta?.focus||{},mode=f.mode;S.rl=S.rl||{};
+  if(!S.rlInit){S.rlInit=1;remove(R('livepub'));remove(R('livepubTo'))}
+  const want={};
+  if(mode==='all'||mode==='spec')Object.keys(f.users||{}).forEach(u=>{
+    const v=S.live?.[u];if(v===undefined)return;const o={d:focusD(u),n:S.players?.[u]?.name||''};
+    if(mode==='all')want['livepub/'+u]=o;
+    else Object.keys(f.viewers||{}).forEach(w=>{want['livepubTo/'+w+'/'+u]=o});
   });
+  Object.keys(S.rl).forEach(k=>{if(!want[k]){delete S.rl[k];remove(R(k))}});
+  Object.entries(want).forEach(([k,o])=>{const j=JSON.stringify(o);if(S.rl[k]!==j){S.rl[k]=j;set(R(k),o)}});
 }
 function renderFocus(){
-  const f=S.meta?.focus||{};
-  $('#fl').innerHTML=Object.entries(S.players||{}).map(([u,p])=>`<label class="fk"><input type="checkbox" data-fu="${u}" ${f.users?.[u]?'checked':''}>${E(p.name)}</label>`).join('')||'<small>参加者がいません</small>';
+  const f=S.meta?.focus||{},ps=Object.entries(S.players||{});
+  const chk=(k,set)=>ps.map(([u,p])=>`<label class="fk"><input type="checkbox" ${k}="${u}" ${set?.[u]?'checked':''}>${E(p.name)}</label>`).join('')||'<small>参加者がいません</small>';
+  $('#fl').innerHTML=chk('data-fu',f.users);$('#fv').innerHTML=chk('data-fv',f.viewers);$('#fvw').hidden=f.mode!=='spec';
+}
+function renderSpec(){
+  const el=$('#sl');if(!el)return;
+  el.innerHTML=Object.entries(S.players||{}).map(([u,p])=>`<label class="fk"><input type="checkbox" data-sp="${u}" ${p.spec?'checked':''}>${E(p.name)}</label>`).join('')||'<small>参加者がいません</small>';
+}
+function renderGroups(){
+  const g=S.meta?.groups||{},el=$('#gl');if(!el)return;
+  el.innerHTML=Object.entries(S.players||{}).map(([u,p])=>`<div class="f"><label>${E(p.name)}</label><select data-gu="${u}"><option value="">なし</option>${'ABCD'.split('').map(k=>`<option ${g[u]===k?'selected':''}>${k}</option>`).join('')}</select></div>`).join('')||'<small>参加者がいません</small>';
 }
 function initDraw(){
   const cv=$('#cv');D.s=[];D.r=[];D.t='p';D.l=1;D.cur=null;draw();tools();
@@ -285,15 +332,17 @@ function host(){
   <details open><summary>回答</summary>
   <div class="f"><label for="s4">回答方式</label><select id="s4"><option value="text">文字</option><option value="draw">手書き</option><option value="both">文字＋手書き</option></select></div>
   <div class="f"><input type="checkbox" id="s1"><label for="s1">回答回数を制限する</label><input type="number" id="s2" min="1" max="99"><span>回</span></div>
-  <div class="f"><input type="checkbox" id="s3"><label for="s3">正解・不正解をすぐ通知する</label></div></details>
+  <div class="f"><input type="checkbox" id="s3"><label for="s3">正解・不正解をすぐ通知する</label></div>
+  <div class="f"><input type="checkbox" id="sm"><label for="sm">送信したらボードをリセットする</label></div></details>
   <details><summary>タイマー</summary>
   <div class="f"><label for="s6">方式</label><select id="s6"><option value="up">カウントアップ</option><option value="down">カウントダウン</option></select><input type="number" id="s7" min="1" max="3600"><span>秒</span></div>
   <div class="f"><label for="s8">表示</label><select id="s8"><option value="ms">mm:ss</option><option value="s">秒のみ</option></select></div>
   <div class="f"><input type="checkbox" id="ss"><label for="ss">タイマーを表示する（司会者・参加者の全画面）</label></div>
   <div class="f"><input type="checkbox" id="st"><label for="st">カウントダウンが0になったら送信をロックする</label></div></details>
-  <details><summary>判定の見た目</summary>
+  <details><summary>見た目（判定色・ボードの色）</summary>
   <div class="f"><label for="sa">正解の背景</label><select id="sa"><option value="red">赤</option><option value="yellow">黄</option><option value="blue">青</option></select></div>
-  <div class="f"><label for="sb">不正解の背景</label><select id="sb"><option value="blue">青</option><option value="black">黒</option><option value="red">赤</option></select></div></details>
+  <div class="f"><label for="sb">不正解の背景</label><select id="sb"><option value="blue">青</option><option value="black">黒</option><option value="red">赤</option></select></div>
+  <div class="f"><label for="sn">ボードの色</label><select id="sn"><option value="white">白</option><option value="blue">青</option><option value="yellow">黄</option></select></div></details>
   <details><summary>履歴の共有</summary>
   <div class="f"><input type="checkbox" id="sc"><label for="sc">全員の回答履歴を参加者に共有する</label></div>
   <div id="shg" hidden>
@@ -304,8 +353,13 @@ function host(){
   <div class="f"><input type="checkbox" id="sh"><label for="sh">即座に公開する</label></div>
   <div class="f"><input type="checkbox" id="si"><label for="si">司会者画面でも非公開にする</label></div></div></details>
   </div><div class="dcr"><details><summary>フォーカス</summary>
-  <div class="f"><label for="s9">モード</label><select id="s9"><option value="off">OFF</option><option value="host">司会のみ</option><option value="all">全体公開</option></select></div>
-  <div class="f fl" id="fl"></div></details>
+  <div class="f"><label for="s9">モード</label><select id="s9"><option value="off">OFF</option><option value="host">司会のみ</option><option value="all">全体公開</option><option value="spec">特定の人に公開</option></select></div>
+  <div class="gl2">フォーカスする人</div><div class="f fl" id="fl"></div>
+  <div id="fvw" hidden><div class="gl2">公開先の人</div><div class="f fl" id="fv"></div></div></details>
+  <details><summary>重ねボード（グループ）</summary>
+  <div id="gl"></div></details>
+  <details><summary>観戦者</summary>
+  <div class="gl2">観戦者は回答せず見るだけになり、席の一覧にも並びません（参加者自身でも切り替えられます）</div><div class="f fl" id="sl"></div></details>
   <details><summary>ボード背景画像</summary>
   <div class="f"><input type="file" id="bgf" accept="image/*"></div>
   <div class="f"><button id="bgc">クリップボードから貼り付け</button><button id="bgd">削除</button></div>
@@ -325,6 +379,9 @@ function host(){
   $('#ey').onclick=()=>{S.idv=!S.idv;showId()};showId();
   $('#me').onclick=()=>{S.midv=!S.midv;updMid()};bd($('#mn'));
   $('#fl').onchange=e=>{const u=e.target.dataset.fu;if(u)update(R('meta/focus/users'),{[u]:e.target.checked?true:null})};
+  $('#fv').onchange=e=>{const u=e.target.dataset.fv;if(u)update(R('meta/focus/viewers'),{[u]:e.target.checked?true:null})};
+  $('#sl').onchange=e=>{const u=e.target.dataset.sp;if(u)update(R('players/'+u),{spec:e.target.checked?true:null})};
+  $('#gl').onchange=e=>{const u=e.target.dataset.gu;if(!u)return;const old=S.meta?.groups?.[u]||null,v=e.target.value||null,up={['meta/groups/'+u]:v};if(old&&old!==v)up[`shared/${old}/${u}`]=null;update(R(''),up)};
   $('#sj').checked=localStorage.tgt!=='0';$('#sj').onchange=()=>{localStorage.tgt=$('#sj').checked?'1':'0';cards()};
   $('#s5').value=localStorage.colsH||0;$('#s5').onchange=()=>{localStorage.colsH=$('#s5').value;gridCols()};gridCols();
   setInterval(tick,100);
@@ -332,13 +389,14 @@ function host(){
   Object.keys(ST).forEach(i=>$('#'+i).onchange=sv);
   app.onclick=hclick;
   $('#cards').onchange=e=>{const k=e.target.dataset.sel;if(!k)return;e.target.checked?S.sel.add(k):S.sel.delete(k);bar()};
-  onValue(R('meta'),s=>{S.meta=s.val();const c=cfg();applySet(c);document.documentElement.dataset.okc=c.okc;document.documentElement.dataset.ngc=c.ngc;const t=T();$('#bt').textContent=(t?.start&&!t.stop)?'タイマー停止':'タイマー開始';$('#s9').value=S.meta?.focus?.mode||'off';renderFocus();livePanel();relay();cards()});
-  onValue(R('players'),s=>{S.players=s.val();$('#pc').textContent=`参加 ${Object.keys(S.players||{}).length}人`;renderPnl();renderFocus();livePanel();cards()});
+  onValue(R('meta'),s=>{S.meta=s.val();const c=cfg();applySet(c);document.documentElement.dataset.okc=c.okc;document.documentElement.dataset.ngc=c.ngc;document.documentElement.dataset.bcol=c.bcol;const t=T();$('#bt').textContent=(t?.start&&!t.stop)?'タイマー停止':'タイマー開始';$('#s9').value=S.meta?.focus?.mode||'off';renderFocus();renderGroups();livePanel();relay();cards()});
+  onValue(R('players'),s=>{S.players=s.val();{const ps=Object.values(S.players||{}),sp=ps.filter(p=>p.spec).length;$('#pc').textContent=`参加 ${ps.length-sp}人`+(sp?`・観戦 ${sp}人`:'')}renderPnl();renderFocus();renderGroups();renderSpec();livePanel();cards()});
   onValue(R('answers'),s=>{S.answers=s.val();S.al=1;cards()});
   onValue(R('results'),s=>{S.results=s.val();cards()});
   onValue(R('revealed'),s=>{S.revealed=s.val();cards()});
   onValue(R('live'),s=>{S.lerr=null;S.live=s.val()||{};livePanel();relay()},e=>{S.lerr=e.code||'error';livePanel()});
   document.addEventListener('keydown',hk);
+  onValue(R('shared'),sn=>{S.shAll=sn.val()||{};livePanel();relay()});
   onValue(R('bg'),s=>bgApply(s.val()));
   document.addEventListener('paste',e=>{if(e.target.closest?.('input,textarea'))return;const f=[...(e.clipboardData?.files||[])].find(f=>f.type.startsWith('image/'));if(f){e.preventDefault();bgSet(f)}});
   $('#bgf').onchange=e=>{const f=e.target.files[0];if(f)bgSet(f);e.target.value=''};
@@ -348,8 +406,8 @@ function host(){
 const list=()=>Object.entries(S.answers||{}).flatMap(([u,o])=>Object.entries(o).map(([a,v])=>({u,a,k:u+'/'+a,...v}))).sort((x,y)=>x.t-y.t);
 const pub=c=>S.results?.[c.u]?.[c.a]||null;
 const pend=()=>list().filter(c=>c.mark&&!nOn(c));
-const order=()=>{const pl=S.players||{},sv=(S.meta?.order||'').split(',').filter(u=>pl[u]);
-  return[...sv,...Object.keys(pl).filter(u=>!sv.includes(u)).sort((a,b)=>(pl[a].t||0)-(pl[b].t||0))]};
+const order=()=>{const pl=S.players||{},act=Object.keys(pl).filter(u=>!pl[u].spec),sv=(S.meta?.order||'').split(',').filter(u=>act.includes(u));
+  return[...sv,...act.filter(u=>!sv.includes(u)).sort((a,b)=>(pl[a].t||0)-(pl[b].t||0))]};
 const pubOn=c=>c.pb===undefined?cfg().ipub:c.pb;
 function cards(){
   const c0=cfg(),L=list(),t0=L[0]?.t,tgOn=localStorage.tgt!=='0',tg=L.find(c=>!c.mark)?.k,fx=c0.share&&c0.sort==='fixed',lastK={};
@@ -367,7 +425,7 @@ function cards(){
 function renderPnl(){
   const pn=$('#pnl');if(!pn)return;
   const cn={};list().forEach(c=>{const o=cn[c.u]||(cn[c.u]={o:0,x:0});if(c.mark==='o')o.o++;else if(c.mark==='x')o.x++});
-  pn.innerHTML=Object.entries(S.players||{}).map(([u,p])=>{const k=cn[u]||{o:0,x:0};return `<span class="chip">${E(p.name)} <span class="mk ok">○${k.o}</span> <span class="mk ng">×${k.x}</span></span>`}).join('')||'<small>参加者がいません</small>';
+  pn.innerHTML=Object.entries(S.players||{}).map(([u,p])=>{const k=cn[u]||{o:0,x:0};return `<span class="chip">${E(p.name)}${p.spec?' <span class="mk gp">観戦</span>':''}${S.meta?.groups?.[u]?` <span class="mk gp">${S.meta.groups[u]}</span>`:''} <span class="mk ok">○${k.o}</span> <span class="mk ng">×${k.x}</span></span>`}).join('')||'<small>参加者がいません</small>';
 }
 function seats(){
   const c0=cfg(),box=$('#seat'),on=c0.share&&c0.sort==='fixed';box.hidden=!on;if(!on)return;box.style.setProperty('--sw',(+localStorage.seatW||150)+'px');
