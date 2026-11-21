@@ -221,6 +221,33 @@ html{--bt:#fff}html[data-bcol=blue]{--bt:#c9defa}html[data-bcol=yellow]{--bt:#ff
 .th span{position:absolute;left:4px;top:4px;background:var(--ink);color:#fff;border-radius:6px;padding:0 6px;font-size:.75rem}
 .th button{width:100%;min-height:28px;font-size:.75rem;padding:0}
 @media(min-width:900px){.seg .bgc{border-left:0;border-right:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}}
+/* --- 画像送りボタン(PC/拡大時は横並びでコンパクトに) --- */
+@media(min-width:900px){
+.ans #bgg .seg{flex-direction:row}
+.ans #bgg .seg button{min-width:34px;width:34px;padding:.2em 0;flex-direction:row}
+.ans #bgg .seg .bgc{min-width:44px;border-top:0;border-bottom:0;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.ans #bgg .kb{display:none}
+}
+/* --- ボード拡大モード --- */
+.ztm,.zx{display:none}
+.ans.zoom{position:fixed;inset:0;max-height:none;z-index:300;background:rgba(19,35,58,.62);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:46px 12px 12px;overflow:hidden;box-shadow:none;container-type:size}
+.ans.zoom.rot{inset:auto;top:0;left:0;width:100dvh;height:100dvw;transform-origin:0 0;transform:translateX(100dvw) rotate(90deg)}
+.ans.zoom .ztm{display:block;position:absolute;top:8px;left:12px;color:#fff;font-weight:700;font-size:.95rem;background:rgba(0,0,0,.4);padding:2px 10px;border-radius:99px}
+.ans.zoom .zx{display:block;position:absolute;top:6px;right:10px;min-height:36px}
+.ans.zoom #dz{display:grid;grid-template-columns:auto auto auto;gap:12px;align-items:start;background:var(--bg);padding:12px;border-radius:14px}
+.ans.zoom #cv{order:0;width:min(calc(100cqw - 270px),calc((100cqh - 120px)*1.6667));height:auto;max-width:none;max-height:none}
+.ans.zoom .gl{display:block}.ans.zoom .grp{flex-direction:column;align-items:stretch}
+.ans.zoom .tl{display:flex;flex-direction:column;gap:16px;margin:0;justify-content:flex-start;align-items:stretch}
+.ans.zoom .tr{flex-direction:column;align-items:stretch;margin:0;gap:14px;justify-content:flex-start}
+.ans.zoom .seg{flex-direction:column}.ans.zoom .seg button+button{border-top:1px solid var(--line);border-left:0}
+.ans.zoom .seg button{flex-direction:row;gap:8px;min-width:96px}
+.ans.zoom #bgg .seg{flex-direction:row}
+.ans.zoom #bgg .seg button{min-width:34px;width:34px;padding:.2em 0;flex-direction:row}
+.ans.zoom #bgg .seg .bgc{min-width:44px;border-top:0;border-bottom:0;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.ans.zoom #bgg .kb{display:none}
+.ans.zoom #ab2{display:block;min-height:52px;font-size:1.05rem}
+.ans.zoom .row{width:100%;justify-content:center;margin:0}.ans.zoom .row span{flex:none;color:#fff;text-align:center}
+.ans.zoom .row button,.ans.zoom #ai{display:none}
 </style></head><body><div id="app"></div>
 <script type="module">
 import('./app.js').catch(e=>{document.getElementById('app').innerHTML='<div style="margin:40px auto;max-width:480px;padding:16px;font-family:sans-serif"><h1>読み込みエラー</h1><p>app.js を読み込めませんでした。index.html と同じフォルダにあるか確認してください。</p><pre style="white-space:pre-wrap;color:#c00">'+String(e&&e.message||e).replace(/</g,'&lt;')+'</pre></div>'});

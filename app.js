@@ -114,8 +114,8 @@ async function join(){
 function party(){
   app.innerHTML=`<header class="top"><span class="code" id="rid"></span><button id="ey" hidden></button><span class="sp"></span><span id="fb" class="fb" hidden></span><span id="sbd" class="fb" hidden>観戦中</span><span id="pn">${E(S.name)}</span><button id="gs">設定</button></header><div class="tbar" id="tm" hidden></div>
   <div class="pmain"><div class="left"><section class="info" id="info"><div id="lv" class="rvw" hidden></div><div id="ib"></div></section>
-  <form class="ans" id="af"><div id="dz" hidden><div class="tl">${tbs()}</div><canvas id="cv" width="640" height="384"></canvas><div class="tr"><div class="seg"><button type="button" id="ud" data-d="u" aria-label="1つ戻す">↶<small>戻す<span class="kb">Z</span></small></button><button type="button" id="rd" data-d="r" aria-label="1つ進める">↷<small>進める<span class="kb">X</span></small></button><button type="button" data-d="c" aria-label="全消し">${IC.t}<small>全消し</small></button></div><button class="pri" id="ab2">送信<span class="kb" id="kbs">Enter</span></button></div></div><input type="text" id="ai" placeholder="回答を入力" autocomplete="off" maxlength="200">
-  <div class="row"><span id="lf"></span><button type="button" id="bd">ボードを下げる</button><button class="pri" id="ab">送信</button></div></form></div><aside class="side" id="pl"></aside></div>
+  <form class="ans" id="af"><div id="ztm" class="ztm" hidden></div><button type="button" id="zx" class="zx">拡大解除</button><div id="dz" hidden><div class="tl">${tbs()}</div><canvas id="cv" width="640" height="384"></canvas><div class="tr"><div class="seg"><button type="button" id="ud" data-d="u" aria-label="1つ戻す">↶<small>戻す<span class="kb">Z</span></small></button><button type="button" id="rd" data-d="r" aria-label="1つ進める">↷<small>進める<span class="kb">X</span></small></button><button type="button" data-d="c" aria-label="全消し">${IC.t}<small>全消し</small></button></div>${BGG}<button class="pri" id="ab2">送信<span class="kb" id="kbs">Enter</span></button></div></div><input type="text" id="ai" placeholder="回答を入力" autocomplete="off" maxlength="200">
+  <div class="row"><span id="lf"></span><button type="button" id="bz">ボード拡大</button><button type="button" id="bd">ボードを下げる</button><button class="pri" id="ab">送信</button></div></form></div><aside class="side" id="pl"></aside></div>
   <dialog id="gd"><h2>設定</h2><div class="f"><label for="gn">名前</label><input type="text" id="gn" maxlength="12"><button id="gnb">変更</button></div><div class="f"><input type="checkbox" id="gsp"><label for="gsp">観戦する（回答せず見るだけ）</label></div><div class="f"><label for="gk">送信ショートカット（PC）</label><select id="gk"><option value="Enter">Enter</option><option value="Space">Space</option></select></div><div class="f"><label for="gc">1行に表示する枚数</label><select id="gc"><option value="0">自動</option>${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join('')}</select></div><div class="f"><button class="pri" id="gx">閉じる</button></div></dialog>`;
   $('#af').onsubmit=async e=>{
     e.preventDefault();if(full())return;
@@ -133,7 +133,9 @@ function party(){
     });
   };
   initDraw();
-  $('#bd').onclick=()=>{const l=$('#af').classList.toggle('low');$('#bd').textContent=l?'ボードを出す':'ボードを下げる'};
+  $('#bd').onclick=()=>{$('#af').classList.toggle('low');updRow()};
+  $('#bz').onclick=()=>setZoom(true);$('#zx').onclick=()=>setZoom(false);updRow();
+  addEventListener('resize',()=>{applyRot();updRow()});addEventListener('orientationchange',()=>setTimeout(()=>{applyRot();updRow()},200));
   $('#gn').value=S.name;
   $('#gnb').onclick=async()=>{const n=$('#gn').value.trim();if(!n)return;S.name=n;localStorage.name=n;$('#pn').textContent=n;try{await update(R('players/'+uid),{name:n});$('#gd').close()}catch(e){alert('名前を変更できませんでした')}};
   $('#gs').onclick=()=>{$('#gn').value=S.name;$('#gd').showModal()};$('#gx').onclick=()=>$('#gd').close();bd($('#gd'));
@@ -163,10 +165,10 @@ function pinfo(){
   const fo=S.meta?.focus,fm=!!(fo&&fo.mode!=='off'&&fo.users?.[uid]);
   if(fm!==S.fm){S.fm=fm;if(fm)liveSched();else remove(R('live/'+uid)).catch(()=>{})}
   liveBadge();showId();
-  const sp=!!S.players?.[uid]?.spec;$('#af').hidden=sp;$('#sbd').hidden=!sp;
+  const sp=!!S.players?.[uid]?.spec;$('#af').hidden=sp;$('#sbd').hidden=!sp;if(sp&&S.zoom)setZoom(false);
   const c=cfg();$('#lf').textContent=S.sendErr?S.sendErr:locked()?'⏱ タイムアップ：送信ロック中':c.limitOn?`残り ${Math.max(0,c.limit-myCount())} 回`:'回数制限なし';
   const md=c.mode||'text';$('#dz').hidden=md==='text';$('#ai').hidden=md==='draw';$('#dz').style.opacity=full()?.4:1;
-  $('#bd').hidden=md==='text';$('#ab2').disabled=full();
+  $('#bd').hidden=md==='text';$('#bz').hidden=md==='text';$('#ab2').disabled=full();
   $('#ab').disabled=full();$('#ai').disabled=full();
   const c0=cfg(),de=document.documentElement;de.dataset.okc=c0.okc;de.dataset.ngc=c0.ngc;de.dataset.bcol=c0.bcol;if(S.bc!==c0.bcol){S.bc=c0.bcol;repaint()}
   const colsS=n=>{S.cc=colsP(n);return `style="grid-template-columns:repeat(${S.cc},1fr)"`};
@@ -204,13 +206,13 @@ const fmt=(ms,dn)=>{
 const tmText=()=>{const t=T();if(!t)return'';
   if(!t.start){if(!t.armed)return'';const c=cfg();return c.tmode==='down'?fmt((c.tdur||60)*1000,1):fmt(0,0)}
   const el=(t.stop||now())-t.start;return t.dur?fmt(t.dur-el,1):fmt(el,0)};
-const tick=()=>{const hd=$('header.top');if(hd)document.documentElement.style.setProperty('--hh',hd.offsetHeight+'px');const e=$('#tm');if(!e)return;const t=cfg().tshow?tmText():'';e.hidden=!t;e.textContent=t};
+const tick=()=>{const hd=$('header.top');if(hd)document.documentElement.style.setProperty('--hh',hd.offsetHeight+'px');const e=$('#tm');if(!e)return;const t=cfg().tshow?tmText():'';e.hidden=!t;e.textContent=t;const z=$('#ztm');if(z){z.hidden=!t;z.textContent=t}};
 const SV='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">';
 const IC={p:SV+'<path d="M4 20l1-4L16.5 4.5l3 3L8 19z"/><path d="M14 7l3 3"/></svg>',e:SV+'<path d="M14.5 4.5l5 5L10 19H5.5l-2-2z"/><path d="M8 11l5 5"/></svg>',t:SV+'<path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/></svg>'};
 const KEYS={p:['E','W','Q'],e:['D','S','A']};
 const tbs0=()=>['p','e'].map(k=>{const n=k==='p'?'ペン':'消しゴム';return `<div class="grp"><span class="gl">${n}</span><div class="seg">${[0,1,2].map(l=>`<button type="button" data-t="${k}${l}" aria-label="${n}${'細中太'[l]}" title="${n}${'細中太'[l]}（${KEYS[k][l]}）">${IC[k]}<i class="sz" style="height:${[2,4,7][l]}px"></i><span class="kb">${KEYS[k][l]}</span></button>`).join('')}</div></div>`}).join('');
 const BGG='<div class="grp" id="bgg" hidden><span class="gl">画像</span><div class="seg"><button type="button" data-bgn="-1" aria-label="前の画像" title="前の画像（←）">◀<span class="kb">←</span></button><div class="bgc" id="bgn" aria-label="現在の画像">1</div><button type="button" data-bgn="1" aria-label="次の画像" title="次の画像（→）">▶<span class="kb">→</span></button></div></div>';
-const tbs=()=>tbs0()+BGG;
+const tbs=()=>tbs0();
 const colsP=n=>{const v=+localStorage.colsP;if(v>0)return v;
   const w=($('#ib')?.clientWidth||innerWidth)-8,mx=Math.max(1,Math.floor(w/150)),mn=Math.max(1,Math.ceil(w/420));
   return Math.max(mn,Math.min(n||1,mx))};
@@ -274,9 +276,24 @@ function mergeLp(){
   const m={...(S.lpA||{}),...(S.lpT||{})},it=Object.entries(m).map(([id,v])=>({id,name:v.n||'',d:v.d||'',bi:v.bi||0}));
   S.lpItems=it;liveView($('#lv'),it);$('#lv').hidden=!it.length;
 }
+function updRow(){
+  const bd=$('#bd');if(!bd)return;const pc=innerWidth>=900,lo=$('#af').classList.contains('low');
+  bd.textContent=pc?(lo?'ボードを出す':'ボードを下げる'):(lo?'ボード▲':'ボード▼');
+}
+function applyRot(){
+  const af=$('#af');if(!af)return;
+  S.rot=!!S.zoom&&innerWidth<900&&innerWidth<innerHeight;af.classList.toggle('rot',S.rot);
+}
+function setZoom(on){
+  const af=$('#af');if(!af)return;S.zoom=on;af.classList.toggle('zoom',on);
+  if(on)af.classList.remove('low');
+  document.body.style.overflow=on?'hidden':'';
+  applyRot();updRow();
+}
 function pk(e){
   if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('dialog[open]'))return;
   const inp=e.target.closest?.('input,select,textarea'),af=$('#af');if(!af||af.hidden)return;
+  if(e.code==='Escape'&&S.zoom){setZoom(false);return}
   const sk=localStorage.sendKey||'Enter',isSend=sk==='Space'?e.code==='Space':(e.code==='Enter'||e.code==='NumpadEnter');
   if(isSend){if(inp)return;e.preventDefault();document.activeElement?.blur?.();if(!$('#ab').disabled)$('#ab').click();return}
   if(inp||$('#dz').hidden||af.classList.contains('low'))return;
@@ -337,7 +354,7 @@ function renderGroups(){
 }
 function initDraw(){
   const cv=$('#cv');D.s=[];D.r=[];D.t='p';D.l=1;D.cur=null;draw();tools();
-  const pt=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height]};
+  const pt=e=>{const r=cv.getBoundingClientRect();return S.rot?[(e.clientY-r.top)*cv.width/r.height,(r.right-e.clientX)*cv.height/r.width]:[(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height]};
   cv.onpointerdown=e=>{if(full())return;e.preventDefault();cv.setPointerCapture(e.pointerId);D.cur={e:D.t==='e',w:SZ[D.t][D.l],p:[pt(e)]};D.s.push(D.cur);D.r=[];draw()};
   cv.onpointermove=e=>{if(!D.cur)return;D.cur.p.push(pt(e));draw()};
   cv.onpointerup=cv.onpointercancel=()=>{D.cur=null};
