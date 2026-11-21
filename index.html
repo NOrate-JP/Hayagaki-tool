@@ -214,6 +214,13 @@ html{--bt:#fff}html[data-bcol=blue]{--bt:#c9defa}html[data-bcol=yellow]{--bt:#ff
 .card:not(.ok):not(.ng) .t img,.hc:not(.ok):not(.ng) .t img{mix-blend-mode:multiply}
 .gl2{font-size:.8rem;color:var(--mut);margin:6px 0 0}
 .mk.gp{background:var(--ink);color:#fff}
+.seg .bgc{min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;border-left:1px solid var(--line);border-right:1px solid var(--line);color:var(--ink);background:var(--pan);-webkit-user-select:none;user-select:none}
+.seg button:disabled{opacity:.35}
+.bgl{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.th{position:relative;width:96px}.th img{width:100%;border:1px solid var(--line);background:#fff;display:block}
+.th span{position:absolute;left:4px;top:4px;background:var(--ink);color:#fff;border-radius:6px;padding:0 6px;font-size:.75rem}
+.th button{width:100%;min-height:28px;font-size:.75rem;padding:0}
+@media(min-width:900px){.seg .bgc{border-left:0;border-right:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}}
 </style></head><body><div id="app"></div>
 <script type="module">
 import('./app.js').catch(e=>{document.getElementById('app').innerHTML='<div style="margin:40px auto;max-width:480px;padding:16px;font-family:sans-serif"><h1>読み込みエラー</h1><p>app.js を読み込めませんでした。index.html と同じフォルダにあるか確認してください。</p><pre style="white-space:pre-wrap;color:#c00">'+String(e&&e.message||e).replace(/</g,'&lt;')+'</pre></div>'});

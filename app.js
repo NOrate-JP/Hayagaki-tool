@@ -22,16 +22,33 @@ function showId(){const r=$('#rid'),e=$('#ey');if(!r||!e)return;const h=cfg().hi
 function updMid(){const m=$('#mid'),b=$('#me');if(!m)return;m.textContent=S.midv?S.room:'•••••';b.innerHTML=S.midv?EYEOFF:EYE;b.setAttribute('aria-label',S.midv?'IDを隠す':'IDを表示')}
 const loadImg=src=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src});
 const bgMsg=t=>{const e=$('#bgs');if(e)e.textContent=t};
+function updBgUi(){
+  const g=$('#bgg');if(!g)return;const n=(S.bgl||[]).length;g.hidden=!n;if(!n)return;
+  const i=S.bgi||0;$('#bgn').textContent=`${i+1}/${n}`;
+  g.querySelector('[data-bgn="-1"]').disabled=i<=0;g.querySelector('[data-bgn="1"]').disabled=i>=n-1;
+}
+function renderBgl(){
+  const el=$('#bgl');if(!el)return;
+  el.innerHTML=(S.bgl||[]).map((x,i)=>`<div class="th"><img src="${x.img}" alt=""><span>${i+1}</span><button type="button" data-bgdel="${x.k}">削除</button></div>`).join('')||'<small>画像は未登録です</small>';
+}
 function afterBg(){
   repaint();
   if(S.lpItems&&$('#lv'))liveView($('#lv'),S.lpItems);
   if($('#fp'))livePanel();
-  const p=$('#bgp');if(p){p.hidden=!S.bgEl;if(S.bgSrc)p.src=S.bgSrc}
+  updBgUi();renderBgl();
 }
-function bgApply(v){
-  if(!v?.img){S.bgEl=null;S.bgKey=null;S.bgSrc='';afterBg();return}
-  if(S.bgKey===v.t)return;S.bgKey=v.t;S.bgSrc=v.img;
-  loadImg(v.img).then(i=>{S.bgEl=i;afterBg()}).catch(()=>{});
+function bgList(v){
+  const ent=Object.entries(v||{}).sort((a,b)=>(a[1].o||0)-(b[1].o||0)||(a[0]<b[0]?-1:1));
+  S.bgl=ent.map(([k,x])=>({k,img:x.img}));S.bgc=S.bgc||{};
+  const ks=new Set(S.bgl.map(x=>x.k));Object.keys(S.bgc).forEach(k=>{if(!ks.has(k))delete S.bgc[k]});
+  const settle=()=>{S.bgEls=S.bgl.map(x=>S.bgc[x.k]||null);S.bgi=Math.min(Math.max(0,S.bgi||0),Math.max(0,S.bgl.length-1));S.bgEl=S.bgEls[S.bgi]||null;afterBg()};
+  const need=S.bgl.filter(x=>!S.bgc[x.k]);
+  if(!need.length)return settle();
+  Promise.all(need.map(x=>loadImg(x.img).then(i=>{S.bgc[x.k]=i}).catch(()=>{}))).then(settle);
+}
+function bgStep(d){
+  const n=(S.bgl||[]).length;if(n<2)return;const i=Math.min(n-1,Math.max(0,(S.bgi||0)+d));if(i===S.bgi)return;
+  S.bgi=i;S.bgEl=(S.bgEls||[])[i]||null;updBgUi();repaint();liveSched();
 }
 async function bgFromBlob(b){
   const u=URL.createObjectURL(b);let im;try{im=await loadImg(u)}finally{URL.revokeObjectURL(u)}
@@ -42,7 +59,7 @@ async function bgFromBlob(b){
   for(let i=0;i<a.length;i+=4){const g=Math.round(a[i]*.299+a[i+1]*.587+a[i+2]*.114);a[i]=a[i+1]=a[i+2]=g;a[i+3]=255}
   x.putImageData(d,0,0);
   let o=cv.toDataURL('image/png');if(o.length>380000)o=cv.toDataURL('image/jpeg',.75);
-  await set(R('bg'),{img:o,t:now()});
+  const key=now().toString(36)+Math.random().toString(36).slice(2,5);await set(R('bgs/'+key),{img:o,o:now(),t:now()});
 }
 async function bgSet(b){try{bgMsg('変換中…');await bgFromBlob(b);bgMsg('設定しました')}catch(e){bgMsg('画像を読み込めませんでした')}}
 const bd=d=>d.addEventListener('click',e=>{if(e.target!==d)return;const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()});
@@ -104,9 +121,16 @@ function party(){
     e.preventDefault();if(full())return;
     const m=cfg().mode||'text',v=m==='draw'?'':$('#ai').value.trim(),ink=m!=='text'&&hasInk();
     if(!v&&!ink)return;
+    S.sendErr=null;
     const o={name:S.name,t:now()};if(v)o.text=v;if(ink)o.img=exportImg();
-    $('#ai').value='';if(ink&&cfg().rst&&!S.grp){D.s=[];D.r=[];draw()}
-    await push(R('answers/'+uid),o);
+    if(o.img&&o.img.length>380000){S.sendErr='⚠ 画像が大きすぎて送れません（背景画像が重い可能性があります）';pinfo();return}
+    const keep=D.s.slice(),cleared=ink&&cfg().rst&&!S.grp;
+    $('#ai').value='';if(cleared){D.s=[];D.r=[];draw()}
+    push(R('answers/'+uid),o).catch(er=>{
+      if(cleared){D.s=keep;draw()}if(v)$('#ai').value=v;
+      S.sendErr='⚠ 送信に失敗しました（'+(er.code||er.message)+'）';pinfo();
+      setTimeout(()=>{if(S.sendErr){S.sendErr=null;pinfo()}},10000);
+    });
   };
   initDraw();
   $('#bd').onclick=()=>{const l=$('#af').classList.toggle('low');$('#bd').textContent=l?'ボードを出す':'ボードを下げる'};
@@ -126,7 +150,7 @@ function party(){
   onValue(R('results/'+uid),s=>{S.results=s.val();pinfo()});
   onValue(R('revealed'),s=>{S.revealed=s.val();pinfo()});
   onValue(R('hist'),s=>{S.hist=s.val();pinfo()});
-  onValue(R('bg'),s=>bgApply(s.val()));
+  onValue(R('bgs'),s=>bgList(s.val()));
   document.addEventListener('keydown',pk);
   document.addEventListener('keyup',e=>{if(e.code==='Space'&&localStorage.sendKey==='Space'&&!e.target.closest?.('input,select,textarea'))e.preventDefault()});
   onValue(R('livepub'),s=>{S.lpA=s.val()||{};mergeLp()});onValue(R('livepubTo/'+uid),s=>{S.lpT=s.val()||{};mergeLp()});
@@ -140,7 +164,7 @@ function pinfo(){
   if(fm!==S.fm){S.fm=fm;if(fm)liveSched();else remove(R('live/'+uid)).catch(()=>{})}
   liveBadge();showId();
   const sp=!!S.players?.[uid]?.spec;$('#af').hidden=sp;$('#sbd').hidden=!sp;
-  const c=cfg();$('#lf').textContent=locked()?'⏱ タイムアップ：送信ロック中':c.limitOn?`残り ${Math.max(0,c.limit-myCount())} 回`:'回数制限なし';
+  const c=cfg();$('#lf').textContent=S.sendErr?S.sendErr:locked()?'⏱ タイムアップ：送信ロック中':c.limitOn?`残り ${Math.max(0,c.limit-myCount())} 回`:'回数制限なし';
   const md=c.mode||'text';$('#dz').hidden=md==='text';$('#ai').hidden=md==='draw';$('#dz').style.opacity=full()?.4:1;
   $('#bd').hidden=md==='text';$('#ab2').disabled=full();
   $('#ab').disabled=full();$('#ai').disabled=full();
@@ -184,7 +208,9 @@ const tick=()=>{const hd=$('header.top');if(hd)document.documentElement.style.se
 const SV='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">';
 const IC={p:SV+'<path d="M4 20l1-4L16.5 4.5l3 3L8 19z"/><path d="M14 7l3 3"/></svg>',e:SV+'<path d="M14.5 4.5l5 5L10 19H5.5l-2-2z"/><path d="M8 11l5 5"/></svg>',t:SV+'<path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/></svg>'};
 const KEYS={p:['E','W','Q'],e:['D','S','A']};
-const tbs=()=>['p','e'].map(k=>{const n=k==='p'?'ペン':'消しゴム';return `<div class="grp"><span class="gl">${n}</span><div class="seg">${[0,1,2].map(l=>`<button type="button" data-t="${k}${l}" aria-label="${n}${'細中太'[l]}" title="${n}${'細中太'[l]}（${KEYS[k][l]}）">${IC[k]}<i class="sz" style="height:${[2,4,7][l]}px"></i><span class="kb">${KEYS[k][l]}</span></button>`).join('')}</div></div>`}).join('');
+const tbs0=()=>['p','e'].map(k=>{const n=k==='p'?'ペン':'消しゴム';return `<div class="grp"><span class="gl">${n}</span><div class="seg">${[0,1,2].map(l=>`<button type="button" data-t="${k}${l}" aria-label="${n}${'細中太'[l]}" title="${n}${'細中太'[l]}（${KEYS[k][l]}）">${IC[k]}<i class="sz" style="height:${[2,4,7][l]}px"></i><span class="kb">${KEYS[k][l]}</span></button>`).join('')}</div></div>`}).join('');
+const BGG='<div class="grp" id="bgg" hidden><span class="gl">画像</span><div class="seg"><button type="button" data-bgn="-1" aria-label="前の画像" title="前の画像（←）">◀<span class="kb">←</span></button><div class="bgc" id="bgn" aria-label="現在の画像">1</div><button type="button" data-bgn="1" aria-label="次の画像" title="次の画像（→）">▶<span class="kb">→</span></button></div></div>';
+const tbs=()=>tbs0()+BGG;
 const colsP=n=>{const v=+localStorage.colsP;if(v>0)return v;
   const w=($('#ib')?.clientWidth||innerWidth)-8,mx=Math.max(1,Math.floor(w/150)),mn=Math.max(1,Math.ceil(w/420));
   return Math.max(mn,Math.min(n||1,mx))};
@@ -201,7 +227,7 @@ const inkOf=L=>{let i=L.length;while(i--){if(L[i].c)return false;if(!L[i].e)retu
 const hasInk=()=>inkOf(D.s)||(!!S.grp&&othersLayers().some(inkOf));
 const TINT={white:'#fff',blue:'#c9defa',yellow:'#fff2a8'};
 const tools=()=>document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===D.t+D.l));
-function paint(cv,L,others,white){
+function paint(cv,L,others,white,bg){
   const x=cv.getContext('2d'),W=cv.width,H=cv.height;
   x.globalCompositeOperation='source-over';x.fillStyle=white?'#fff':(TINT[cfg().bcol]||'#fff');x.fillRect(0,0,W,H);
   const lay=S.lay||(S.lay=document.createElement('canvas'));if(lay.width!==W)lay.width=W;if(lay.height!==H)lay.height=H;
@@ -217,11 +243,17 @@ function paint(cv,L,others,white){
     });
     y.globalCompositeOperation='source-over';x.drawImage(lay,0,0);
   });
-  if(S.bgEl){x.globalCompositeOperation='multiply';x.drawImage(S.bgEl,0,0,W,H);x.globalCompositeOperation='source-over'}
+  const B=bg===undefined?S.bgEl:bg;if(B){x.globalCompositeOperation='multiply';x.drawImage(B,0,0,W,H);x.globalCompositeOperation='source-over'}
 }
 const othersLayers=()=>Object.entries(S.shs||{}).filter(([u])=>u!==uid).map(([,v])=>parseC(v.d));
 const repaint=()=>{if($('#cv'))paint($('#cv'),D.s,othersLayers())};
-function exportImg(){const t=document.createElement('canvas');t.width=640;t.height=384;paint(t,D.s,othersLayers(),true);return t.toDataURL('image/png')}
+function exportImg(){
+  const t=document.createElement('canvas');t.width=640;t.height=384;paint(t,D.s,othersLayers(),true);
+  let o=t.toDataURL('image/png');
+  if(o.length>140000)o=t.toDataURL('image/jpeg',.82);
+  if(o.length>140000)o=t.toDataURL('image/jpeg',.6);
+  return o;
+}
 function draw(){repaint();$('#ud').disabled=!D.s.length;$('#rd').disabled=!D.r.length;liveSched();grpSched()}
 const enc=()=>D.s.map(t=>{if(t.c)return'c';let last=null;
   const q=t.p.filter((p,i)=>{if(!last||i===t.p.length-1||Math.hypot(p[0]-last[0],p[1]-last[1])>=2){last=p;return true}return false});
@@ -230,7 +262,7 @@ const parse=str=>(str||'').split('\n').filter(Boolean).map(l=>{if(l==='c')return
 const pcache=new Map();
 const parseC=d=>{let r=pcache.get(d);if(!r){r=parse(d);pcache.set(d,r);if(pcache.size>600)pcache.clear()}return r};
 let liveT=0;
-function liveSched(){if(!S.fm||liveT)return;liveT=setTimeout(()=>{liveT=0;set(R('live/'+uid),{d:enc(),t:now()}).then(()=>{S.le=null;liveBadge()}).catch(e=>{S.le=e.code||'error';liveBadge()})},120)}
+function liveSched(){if(!S.fm||liveT)return;liveT=setTimeout(()=>{liveT=0;set(R('live/'+uid),{d:enc(),t:now(),bi:S.bgi||0}).then(()=>{S.le=null;liveBadge()}).catch(e=>{S.le=e.code||'error';liveBadge()})},120)}
 let grpT=0;
 function grpSched(){if(!S.grp||grpT)return;const g=S.grp;grpT=setTimeout(()=>{grpT=0;if(S.grp===g)set(R(`shared/${g}/${uid}`),{d:enc(),t:now()}).catch(()=>{})},100)}
 function switchGroup(g){
@@ -239,7 +271,7 @@ function switchGroup(g){
   repaint();
 }
 function mergeLp(){
-  const m={...(S.lpA||{}),...(S.lpT||{})},it=Object.entries(m).map(([id,v])=>({id,name:v.n||'',d:v.d||''}));
+  const m={...(S.lpA||{}),...(S.lpT||{})},it=Object.entries(m).map(([id,v])=>({id,name:v.n||'',d:v.d||'',bi:v.bi||0}));
   S.lpItems=it;liveView($('#lv'),it);$('#lv').hidden=!it.length;
 }
 function pk(e){
@@ -252,6 +284,7 @@ function pk(e){
   if(M[e.code]){e.preventDefault();document.querySelector(`[data-t="${M[e.code]}"]`)?.click()}
   else if(e.code==='KeyZ'){e.preventDefault();$('#ud').click()}
   else if(e.code==='KeyX'){e.preventDefault();$('#rd').click()}
+  else if((e.code==='ArrowLeft'||e.code==='ArrowRight')&&(S.bgl||[]).length>1){e.preventDefault();bgStep(e.code==='ArrowLeft'?-1:1)}
 }
 function liveBadge(){const b=$('#fb');if(!b)return;const e=!!(S.fm&&S.le);b.hidden=!e;b.className='fb err';b.textContent='⚠ 描画送信エラー'}
 function focusD(u){
@@ -266,13 +299,13 @@ function liveView(box,items){
   items.forEach(it=>{
     let c=have.get(it.id);
     if(!c){c=document.createElement('div');c.className='hc lv';c.dataset.id=it.id;c.innerHTML='<small></small><canvas width="640" height="384"></canvas>';box.appendChild(c)}
-    have.delete(it.id);c.firstChild.textContent=it.name+(it.wait?'（受信待ち）':'（描画中）');const Ly=(it.d||'').split('\u001e').map(parseC);paint(c.querySelector('canvas'),Ly[Ly.length-1]||[],Ly.slice(0,-1));
+    have.delete(it.id);c.firstChild.textContent=it.name+(it.wait?'（受信待ち）':'（描画中）');const Ly=(it.d||'').split('\u001e').map(parseC);paint(c.querySelector('canvas'),Ly[Ly.length-1]||[],Ly.slice(0,-1),false,(S.bgEls||[])[it.bi||0]||null);
   });
   have.forEach(c=>c.remove());
 }
 function livePanel(){
   const f=S.meta?.focus,us=(f&&f.mode!=='off')?Object.keys(f.users||{}):[];
-  const it=us.map(u=>({id:u,name:S.players?.[u]?.name||'?',d:focusD(u),wait:S.live?.[u]===undefined}));
+  const it=us.map(u=>({id:u,name:S.players?.[u]?.name||'?',d:focusD(u),bi:S.live?.[u]?.bi||0,wait:S.live?.[u]===undefined}));
   liveView($('#fp'),it);
   $('#fpw').hidden=!it.length&&!S.lerr;
   $('#fh').textContent=S.lerr?'⚠ ライブ受信エラー（'+S.lerr+'）: Firebaseのルールを更新してください':'フォーカス';
@@ -282,7 +315,7 @@ function relay(){
   if(!S.rlInit){S.rlInit=1;remove(R('livepub'));remove(R('livepubTo'))}
   const want={};
   if(mode==='all'||mode==='spec')Object.keys(f.users||{}).forEach(u=>{
-    const v=S.live?.[u];if(v===undefined)return;const o={d:focusD(u),n:S.players?.[u]?.name||''};
+    const v=S.live?.[u];if(v===undefined)return;const o={d:focusD(u),bi:S.live?.[u]?.bi||0,n:S.players?.[u]?.name||''};
     if(mode==='all')want['livepub/'+u]=o;
     else Object.keys(f.viewers||{}).forEach(w=>{want['livepubTo/'+w+'/'+u]=o});
   });
@@ -312,6 +345,7 @@ function initDraw(){
   cv.oncontextmenu=e=>e.preventDefault();$('#dz').oncontextmenu=e=>e.preventDefault();
   $('#dz').onclick=e=>{
     const b=e.target.closest('button');if(!b)return;
+    if(b.dataset.bgn){bgStep(+b.dataset.bgn);return}
     if(b.dataset.t){D.t=b.dataset.t[0];D.l=+b.dataset.t[1];tools()}
     else if(b.dataset.d==='u'&&D.s.length)D.r.push(D.s.pop());
     else if(b.dataset.d==='r'&&D.r.length)D.s.push(D.r.pop());
@@ -361,10 +395,10 @@ function host(){
   <details><summary>観戦者</summary>
   <div class="gl2">観戦者は回答せず見るだけになり、席の一覧にも並びません（参加者自身でも切り替えられます）</div><div class="f fl" id="sl"></div></details>
   <details><summary>ボード背景画像</summary>
-  <div class="f"><input type="file" id="bgf" accept="image/*"></div>
-  <div class="f"><button id="bgc">クリップボードから貼り付け</button><button id="bgd">削除</button></div>
-  <div class="f"><small id="bgs">Ctrl+V（⌘V）でも貼り付けできます。白は透過され、線は判定色に合わせて変わります。</small></div>
-  <img id="bgp" hidden alt="背景プレビュー" style="max-width:100%;max-height:90px;border:1px solid var(--line);background:#fff;margin-bottom:10px"></details>
+  <div class="f"><input type="file" id="bgf" accept="image/*" multiple></div>
+  <div class="f"><button id="bgc">クリップボードから貼り付け</button><button id="bgd">すべて削除</button></div>
+  <div class="f"><small id="bgs">Ctrl+V（⌘V）でも貼り付けできます。複数登録でき、参加者が切り替えられます。白は透過され、線は判定色に合わせて変わります。</small></div>
+  <div id="bgl" class="bgl"></div></details>
   <details><summary>この端末・部屋</summary>
   <div class="f"><label for="s5">1行の枚数</label><select id="s5"><option value="0">自動</option>${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join('')}</select></div>
   <div class="f"><input type="checkbox" id="sk"><label for="sk">左上の部屋IDを隠す（全員の画面）</label></div>
@@ -397,11 +431,12 @@ function host(){
   onValue(R('live'),s=>{S.lerr=null;S.live=s.val()||{};livePanel();relay()},e=>{S.lerr=e.code||'error';livePanel()});
   document.addEventListener('keydown',hk);
   onValue(R('shared'),sn=>{S.shAll=sn.val()||{};livePanel();relay()});
-  onValue(R('bg'),s=>bgApply(s.val()));
+  onValue(R('bgs'),s=>bgList(s.val()));
   document.addEventListener('paste',e=>{if(e.target.closest?.('input,textarea'))return;const f=[...(e.clipboardData?.files||[])].find(f=>f.type.startsWith('image/'));if(f){e.preventDefault();bgSet(f)}});
-  $('#bgf').onchange=e=>{const f=e.target.files[0];if(f)bgSet(f);e.target.value=''};
+  $('#bgf').onchange=async e=>{for(const f of [...e.target.files])await bgSet(f);e.target.value=''};
+  $('#bgl').onclick=e=>{const k=e.target.dataset.bgdel;if(k)remove(R('bgs/'+k))};
   $('#bgc').onclick=async()=>{try{for(const i of await navigator.clipboard.read()){const ty=i.types.find(t=>t.startsWith('image/'));if(ty){await bgSet(await i.getType(ty));return}}bgMsg('クリップボードに画像がありません')}catch(e){bgMsg('貼り付けできませんでした。Ctrl+V（⌘V）を押してください')}};
-  $('#bgd').onclick=()=>{remove(R('bg'));bgMsg('削除しました')};
+  $('#bgd').onclick=()=>{remove(R('bgs'));bgMsg('すべて削除しました')};
 }
 const list=()=>Object.entries(S.answers||{}).flatMap(([u,o])=>Object.entries(o).map(([a,v])=>({u,a,k:u+'/'+a,...v}))).sort((x,y)=>x.t-y.t);
 const pub=c=>S.results?.[c.u]?.[c.a]||null;
